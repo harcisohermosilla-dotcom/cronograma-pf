@@ -436,7 +436,7 @@
             <i class="fab fa-google-drive" style="color:#16a34a;"></i>
             <span style="font-size:0.85rem;"><strong>Conectado</strong> {{ driveUsuario ? ('· ' + driveUsuario) : '' }}</span>
             <span style="font-size:0.8rem; color:#64748b;" v-if="driveSincronizando"><i class="fas fa-sync-alt fa-spin"></i> Sincronizando...</span>
-            <span style="font-size:0.8rem; color:#64748b;" v-else-if="driveUltimaSync">Últ. sync: {{ driveUltimaSync }}</span>
+            <span style="font-size:0.8rem; color:#64748b;" v-else-if="driveUltimaSync">Últ. sync: {{ driveUltimaSync }} · JSON + Excel</span>
             <div style="margin-left:auto; display:flex; gap:8px;">
                 <button class="btn btn-outline" @click="driveCargarDatos(true)" title="Traer últimos cambios del equipo"><i class="fas fa-cloud-download-alt"></i> Actualizar</button>
                 <button class="btn btn-outline" @click="driveDesconectar">Desconectar</button>
@@ -1178,7 +1178,7 @@
                 mostrarAuditoresModal: false, auditoresModalTitulo: '', auditoresModalLista: [], auditoresModalBusqueda: '',
                 // Estado de Google Drive
                 driveConectado: false, driveConectando: false, driveUsuario: '', driveSincronizando: false,
-                driveUltimaSync: '', driveError: '', driveFileId: null, driveModifiedTimeConocido: null,
+                driveUltimaSync: '', driveError: '', driveFileId: null, driveModifiedTimeConocido: null, driveExcelFileId: null,
             },
             computed: {
                 auditoresModalListaFiltrada() { if (!this.auditoresModalBusqueda) return this.auditoresModalLista; const q = this.auditoresModalBusqueda.toLowerCase(); return this.auditoresModalLista.filter(a => obtenerNombreApellido(a).toLowerCase().includes(q)); },
@@ -1226,6 +1226,8 @@
                 if (!storageDisponible()) this.notificar('Este navegador no permite guardar datos localmente. Los datos NO se conservarán al refrescar.', 'error');
                 this.driveFileId = localStorage.getItem('drive_file_id') || null;
                 if (this.driveFileId === 'undefined' || this.driveFileId === 'null' || this.driveFileId === '') { this.driveFileId = null; localStorage.removeItem('drive_file_id'); }
+                this.driveExcelFileId = localStorage.getItem('drive_excel_file_id') || null;
+                if (this.driveExcelFileId === 'undefined' || this.driveExcelFileId === 'null' || this.driveExcelFileId === '') { this.driveExcelFileId = null; localStorage.removeItem('drive_excel_file_id'); }
                 this.$nextTick(() => this.driveInit());
             },
             methods: {
@@ -1337,40 +1339,51 @@
                     this.driveIniciarPolling();
                 },
                 driveHeaders() { return { Authorization: 'Bearer ' + this._driveAccessToken }; },
+                async driveObtenerOCrearArchivoId(nombreArchivo, mimeType, idActual) {
+                    let id = idActual;
+                    if (id && id !== 'undefined' && id !== 'null') {
+                        try {
+                            const check = await fetch(`${DRIVE_API}/files/${id}?fields=id,trashed`, { headers: this.driveHeaders() });
+                            if (check.ok) { const meta = await check.json(); if (!meta.trashed) return id; }
+                        } catch (e) {}
+                        id = null;
+                    }
+                    const q = encodeURIComponent(`name='${nombreArchivo}' and trashed=false`);
+                    const buscar = await fetch(`${DRIVE_API}/files?q=${q}&fields=files(id,name)`, { headers: this.driveHeaders() });
+                    if (!buscar.ok) { const errBody = await buscar.text(); throw new Error('Búsqueda de ' + nombreArchivo + ' falló: ' + buscar.status + ' ' + errBody); }
+                    const resultado = await buscar.json();
+                    if (resultado.files && resultado.files.length > 0 && resultado.files[0].id) {
+                        return resultado.files[0].id;
+                    }
+                    const crear = await fetch(`${DRIVE_API}/files`, { method: 'POST', headers: { ...this.driveHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ name: nombreArchivo, mimeType: mimeType }) });
+                    if (!crear.ok) { const errBody = await crear.text(); throw new Error('Creación de ' + nombreArchivo + ' falló: ' + crear.status + ' ' + errBody); }
+                    const nuevo = await crear.json();
+                    if (!nuevo.id) throw new Error('La API no devolvió un ID de archivo válido para ' + nombreArchivo);
+                    return nuevo.id;
+                },
                 async driveBuscarOCrearArchivo() {
                     this.driveSincronizando = true;
                     try {
-                        if (this.driveFileId && this.driveFileId !== 'undefined' && this.driveFileId !== 'null') {
-                            try {
-                                const check = await fetch(`${DRIVE_API}/files/${this.driveFileId}?fields=id,modifiedTime,trashed`, { headers: this.driveHeaders() });
-                                if (check.ok) {
-                                    const meta = await check.json();
-                                    if (!meta.trashed) { await this.driveCargarDatos(false); this.driveSincronizando = false; return; }
-                                }
-                            } catch (e) { /* el archivo guardado ya no es válido, seguimos a buscar/crear uno nuevo */ }
-                            this.driveFileId = null; localStorage.removeItem('drive_file_id');
-                        }
-                        const q = encodeURIComponent(`name='${DRIVE_CONFIG.FILE_NAME}' and trashed=false`);
-                        const buscar = await fetch(`${DRIVE_API}/files?q=${q}&fields=files(id,name,modifiedTime)`, { headers: this.driveHeaders() });
-                        if (!buscar.ok) { const errBody = await buscar.text(); throw new Error('Búsqueda falló: ' + buscar.status + ' ' + errBody); }
-                        const resultado = await buscar.json();
-                        if (resultado.files && resultado.files.length > 0 && resultado.files[0].id) {
-                            this.driveFileId = resultado.files[0].id;
-                            localStorage.setItem('drive_file_id', this.driveFileId);
+                        const idExistente = this.driveFileId;
+                        this.driveFileId = await this.driveObtenerOCrearArchivoId(DRIVE_CONFIG.FILE_NAME, 'application/json', this.driveFileId);
+                        localStorage.setItem('drive_file_id', this.driveFileId);
+                        if (idExistente === this.driveFileId) {
                             await this.driveCargarDatos(false);
-                            this.notificar('Conectado al cronograma compartido del equipo.', 'success');
                         } else {
-                            const crear = await fetch(`${DRIVE_API}/files`, { method: 'POST', headers: { ...this.driveHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ name: DRIVE_CONFIG.FILE_NAME, mimeType: 'application/json' }) });
-                            if (!crear.ok) { const errBody = await crear.text(); throw new Error('Creación falló: ' + crear.status + ' ' + errBody); }
-                            const nuevo = await crear.json();
-                            if (!nuevo.id) throw new Error('La API no devolvió un ID de archivo válido.');
-                            this.driveFileId = nuevo.id;
-                            localStorage.setItem('drive_file_id', this.driveFileId);
-                            await this.driveGuardarDatos();
-                            this.notificar('Se creó "' + DRIVE_CONFIG.FILE_NAME + '" en tu Google Drive. Compartilo (botón derecho → Compartir, con permiso de Editor) con el resto del equipo para que todos vean los mismos datos.', 'success');
+                            // Archivo recién encontrado por nombre o recién creado
+                            const check = await fetch(`${DRIVE_API}/files/${this.driveFileId}?fields=size`, { headers: this.driveHeaders() });
+                            const meta = check.ok ? await check.json() : null;
+                            if (meta && Number(meta.size) > 0) {
+                                await this.driveCargarDatos(false);
+                                this.notificar('Conectado al cronograma compartido del equipo.', 'success');
+                            } else {
+                                await this.driveGuardarDatos();
+                                this.notificar('Se creó "' + DRIVE_CONFIG.FILE_NAME + '" en tu Google Drive. Compartilo (botón derecho → Compartir, con permiso de Editor) con el resto del equipo para que todos vean los mismos datos.', 'success');
+                            }
                         }
                     } catch (e) { this.driveError = 'Error al buscar/crear el archivo en Drive: ' + (e && e.message ? e.message : e); console.error(e); }
                     this.driveSincronizando = false;
+                    this.driveGuardarExcel();
                 },
                 async driveCargarDatos(manual) {
                     if (!this.driveFileId) return;
@@ -1398,6 +1411,37 @@
                         else { this.driveError = 'No se pudo guardar en Drive (¿perdiste la conexión o el acceso al archivo?).'; }
                     } catch (e) { this.driveError = 'No se pudo guardar en Drive.'; console.error(e); }
                     this.driveSincronizando = false;
+                    this.driveGuardarExcel();
+                },
+                filaAExcelPF(f) {
+                    return [f.NRO_SUCURSAL || '', f.ESTR_COD || '', f.ESTR_DESCRIPCION || '', f.UBIC_TIPO || '', f.UBIC_ABREVIATURA || '', f.AÑO_APER || '', f.Ultimo_Inventario || '', f.dias !== null && f.dias !== undefined ? f.dias : '', f.horaConvocatoria || '', f.horaSalida || '', f.CLUS_DESCRIPCION || '', f.CANT_GONDOLAS || '', f.ESTR_GRUPOS || '', f.NOMBRE_ENCARGADO || '', f.NOMBRE_SUPERVISOR || '', (f.personasSeleccionadas || []).join(', '), (f.supervisoresSeleccionados || []).join(', '), f.seleccionado ? 'Sí' : 'No', this.estadoTexto(f.estado), f.motivoReauditoria || ''];
+                },
+                filaAExcelCL(f) {
+                    return [f.DEPOSITO || '', f.SECTOR || '', f.Ultimo_Inventario || '', f.dias !== null && f.dias !== undefined ? f.dias : '', f.horaConvocatoria || '', f.horaSalida || '', (f.personasSeleccionadas || []).join(', '), (f.supervisoresSeleccionados || []).join(', '), f.seleccionado ? 'Sí' : 'No', this.estadoTexto(f.estado), f.motivoReauditoria || ''];
+                },
+                driveConstruirLibroExcel() {
+                    const wb = XLSX.utils.book_new();
+                    const headersPF = ['NRO_SUCURSAL', 'ESTR_COD', 'ESTR_DESCRIPCION', 'UBIC_TIPO', 'UBIC_ABREVIATURA', 'AÑO_APER', 'Ultimo Inventario', 'Días', 'Convocatoria', 'Salida', 'CLUS_DESCRIPCION', 'CANT_GONDOLAS', 'ESTR_GRUPOS', 'Encargado', 'Supervisor', 'Auditores Asignados', 'Supervisores Asignados', 'Seleccionado', 'Estado', 'Motivo Reauditoría'];
+                    const filasPF = [headersPF, ...this.pfFilas.map(f => this.filaAExcelPF(f))];
+                    const wsPF = XLSX.utils.aoa_to_sheet(filasPF);
+                    XLSX.utils.book_append_sheet(wb, wsPF, 'Puntos de Venta');
+                    const headersCL = ['DEPOSITO', 'SECTOR', 'Ultimo Inventario', 'Días', 'Convocatoria', 'Salida', 'Auditores Asignados', 'Supervisores Asignados', 'Seleccionado', 'Estado', 'Motivo Reauditoría'];
+                    const filasCL = [headersCL, ...this.clFilas.map(f => this.filaAExcelCL(f))];
+                    const wsCL = XLSX.utils.aoa_to_sheet(filasCL);
+                    XLSX.utils.book_append_sheet(wb, wsCL, 'Centro Logístico');
+                    return wb;
+                },
+                async driveGuardarExcel() {
+                    if (!this.driveConectado || typeof XLSX === 'undefined') return;
+                    try {
+                        const excelMime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+                        this.driveExcelFileId = await this.driveObtenerOCrearArchivoId('cronograma_inventarios_pf.xlsx', excelMime, this.driveExcelFileId);
+                        localStorage.setItem('drive_excel_file_id', this.driveExcelFileId);
+                        const wb = this.driveConstruirLibroExcel();
+                        const arrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                        const blob = new Blob([arrayBuffer], { type: excelMime });
+                        await fetch(`${DRIVE_UPLOAD_API}/files/${this.driveExcelFileId}?uploadType=media`, { method: 'PATCH', headers: { ...this.driveHeaders(), 'Content-Type': excelMime }, body: blob });
+                    } catch (e) { console.error('No se pudo actualizar el Excel en Drive:', e); }
                 },
                 driveIniciarPolling() {
                     if (this._drivePollId) clearInterval(this._drivePollId);
