@@ -1158,9 +1158,9 @@
             data: {
                 tabActivo: 'pf',
                 fechaActual: new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-                toasts: [], _toastId: 1, _toastTimers: {}, historialNotificaciones: [], mostrarNotificacionesModal: false,
-                bitacora: [], _bitacoraId: 1, mostrarBitacoraModal: false, bitacoraFiltroModulo: '', bitacoraBusqueda: '',
-                guardando: false, _avisoAlmacenamientoMostrado: false,
+                toasts: [], toastIdContador: 1, toastTimersMap: {}, historialNotificaciones: [], mostrarNotificacionesModal: false,
+                bitacora: [], bitacoraIdContador: 1, mostrarBitacoraModal: false, bitacoraFiltroModulo: '', bitacoraBusqueda: '',
+                guardando: false, avisoAlmacenamientoMostrado: false,
                 ultimoMensajePF: null, ultimoMensajeCL: null,
                 pfFilas: sampleDataPF.map(f => {
                     const dias = calcularDiasDesde(f.Ultimo_Inventario);
@@ -1182,7 +1182,6 @@
             },
             computed: {
                 auditoresModalListaFiltrada() { if (!this.auditoresModalBusqueda) return this.auditoresModalLista; const q = this.auditoresModalBusqueda.toLowerCase(); return this.auditoresModalLista.filter(a => obtenerNombreApellido(a).toLowerCase().includes(q)); },
-                obtenerNombreApellido() { return function(nombre) { return obtenerNombreApellido(nombre); }; },
                 pfFilasFiltradas() {
                     return this.pfFilas.filter(f => {
                         const coincidePDV = !this.pfBuscar || (f.NRO_SUCURSAL && String(f.NRO_SUCURSAL).toLowerCase().includes(this.pfBuscar.toLowerCase())) || (f.ESTR_DESCRIPCION && f.ESTR_DESCRIPCION.toLowerCase().includes(this.pfBuscar.toLowerCase()));
@@ -1235,18 +1234,18 @@
                 estadoTexto(estado) { return ESTADO_TEXTOS[estado] || ESTADO_TEXTOS.pendiente; },
                 toastIcono(tipo) { switch (tipo) { case 'success': return 'fas fa-check-circle'; case 'error': return 'fas fa-times-circle'; case 'warning': return 'fas fa-exclamation-triangle'; default: return 'fas fa-info-circle'; } },
                 notificar(mensaje, tipo) {
-                    const id = this._toastId++; const fecha = new Date().toISOString();
+                    const id = this.toastIdContador++; const fecha = new Date().toISOString();
                     this.toasts.push({ id: id, mensaje: mensaje, tipo: tipo || 'info' });
                     this.historialNotificaciones.unshift({ id: id, mensaje: mensaje, tipo: tipo || 'info', fecha: fecha });
                     if (this.historialNotificaciones.length > 300) this.historialNotificaciones.length = 300;
-                    this._toastTimers[id] = setTimeout(() => { this.quitarToast(id); }, 1000);
+                    this.toastTimersMap[id] = setTimeout(() => { this.quitarToast(id); }, 1000);
                 },
-                quitarToast(id) { this.toasts = this.toasts.filter(t => t.id !== id); if (this._toastTimers[id]) { clearTimeout(this._toastTimers[id]); delete this._toastTimers[id]; } },
+                quitarToast(id) { this.toasts = this.toasts.filter(t => t.id !== id); if (this.toastTimersMap[id]) { clearTimeout(this.toastTimersMap[id]); delete this.toastTimersMap[id]; } },
                 notifCerrar(id) { this.quitarToast(id); },
                 limpiarNotificaciones() { if (confirm('¿Vaciar todo el historial de notificaciones?')) { this.historialNotificaciones = []; } },
                 formatearFechaHora(fecha) { return formatearFechaHora(fecha); },
                 registrarBitacora(modulo, accion, detalle) {
-                    this.bitacora.unshift({ id: this._bitacoraId++, fecha: new Date().toISOString(), modulo: modulo, accion: accion, detalle: detalle });
+                    this.bitacora.unshift({ id: this.bitacoraIdContador++, fecha: new Date().toISOString(), modulo: modulo, accion: accion, detalle: detalle });
                     if (this.bitacora.length > 1000) this.bitacora.length = 1000;
                 },
                 limpiarBitacora() { if (confirm('¿Vaciar toda la bitácora de auditoría? Esta acción no se puede deshacer.')) { this.bitacora = []; this.notificar('Bitácora vaciada.', 'info'); } },
@@ -1285,8 +1284,8 @@
                                 f.supervisoresSeleccionados = f.supervisorSeleccionado ? [f.supervisorSeleccionado] : []; delete f.supervisorSeleccionado;
                             }
                         });
-                        let maxIdBitacora = 0; this.bitacora.forEach(b => { if (b.id > maxIdBitacora) maxIdBitacora = b.id; }); this._bitacoraId = maxIdBitacora + 1;
-                        let maxIdNotif = 0; this.historialNotificaciones.forEach(n => { if (n.id > maxIdNotif) maxIdNotif = n.id; }); this._toastId = maxIdNotif + 1;
+                        let maxIdBitacora = 0; this.bitacora.forEach(b => { if (b.id > maxIdBitacora) maxIdBitacora = b.id; }); this.bitacoraIdContador = maxIdBitacora + 1;
+                        let maxIdNotif = 0; this.historialNotificaciones.forEach(n => { if (n.id > maxIdNotif) maxIdNotif = n.id; }); this.toastIdContador = maxIdNotif + 1;
                     } catch (e) { console.error('Error al restaurar datos guardados:', e); }
                 },
                 construirPayload() {
@@ -1296,7 +1295,7 @@
                     this.guardando = true;
                     const payload = this.construirPayload();
                     const ok = guardarEstadoStorage(payload);
-                    if (!ok && !this._avisoAlmacenamientoMostrado) { this._avisoAlmacenamientoMostrado = true; this.notificar('No se pudo guardar localmente.', 'error'); }
+                    if (!ok && !this.avisoAlmacenamientoMostrado) { this.avisoAlmacenamientoMostrado = true; this.notificar('No se pudo guardar localmente.', 'error'); }
                     setTimeout(() => { this.guardando = false; }, 300);
                 },
                 guardarTodo() {
