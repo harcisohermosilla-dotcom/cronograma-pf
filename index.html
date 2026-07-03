@@ -1009,6 +1009,7 @@
             CLIENT_ID: '225233820803-6hlo6qnjq9jmernbfap6gonfh4hotiip.apps.googleusercontent.com',
             SCOPES: 'https://www.googleapis.com/auth/drive',
             FILE_NAME: 'cronograma_inventarios_pf_data.json',
+            FIXED_FILE_ID: '19WyUeFyUp9wViUJkZYnKxxwK74i6hDGv', // ID fijo del archivo compartido del equipo. Dejar '' para que busque/cree por nombre.
             POLL_INTERVAL_MS: 25000
         };
         const DRIVE_API = 'https://www.googleapis.com/drive/v3';
@@ -1363,6 +1364,25 @@
                 async driveBuscarOCrearArchivo() {
                     this.driveSincronizando = true;
                     try {
+                        if (DRIVE_CONFIG.FIXED_FILE_ID) {
+                            // ID fijo: usamos siempre exactamente este archivo, sin buscar por nombre.
+                            this.driveFileId = DRIVE_CONFIG.FIXED_FILE_ID;
+                            localStorage.setItem('drive_file_id', this.driveFileId);
+                            const check = await fetch(`${DRIVE_API}/files/${this.driveFileId}?fields=id,size,trashed`, { headers: this.driveHeaders() });
+                            if (!check.ok) { const errBody = await check.text(); throw new Error('No se pudo acceder al archivo fijo: ' + check.status + ' ' + errBody + ' — revisá que esté compartido con este usuario.'); }
+                            const meta = await check.json();
+                            if (meta.trashed) throw new Error('El archivo fijo está en la papelera de Drive.');
+                            if (Number(meta.size) > 0) {
+                                await this.driveCargarDatos(false);
+                                this.notificar('Conectado al cronograma compartido del equipo.', 'success');
+                            } else {
+                                await this.driveGuardarDatos();
+                                this.notificar('Archivo compartido conectado (estaba vacío, se inicializó).', 'success');
+                            }
+                            this.driveSincronizando = false;
+                            this.driveGuardarExcel();
+                            return;
+                        }
                         const idExistente = this.driveFileId;
                         this.driveFileId = await this.driveObtenerOCrearArchivoId(DRIVE_CONFIG.FILE_NAME, 'application/json', this.driveFileId);
                         localStorage.setItem('drive_file_id', this.driveFileId);
