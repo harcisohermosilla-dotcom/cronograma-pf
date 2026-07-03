@@ -1225,6 +1225,7 @@
                 this.driveGuardarDebounced = debounce(this.driveGuardarDatos, 1500);
                 if (!storageDisponible()) this.notificar('Este navegador no permite guardar datos localmente. Los datos NO se conservarán al refrescar.', 'error');
                 this.driveFileId = localStorage.getItem('drive_file_id') || null;
+                if (this.driveFileId === 'undefined' || this.driveFileId === 'null' || this.driveFileId === '') { this.driveFileId = null; localStorage.removeItem('drive_file_id'); }
                 this.$nextTick(() => this.driveInit());
             },
             methods: {
@@ -1339,28 +1340,36 @@
                 async driveBuscarOCrearArchivo() {
                     this.driveSincronizando = true;
                     try {
-                        if (this.driveFileId) {
-                            const check = await fetch(`${DRIVE_API}/files/${this.driveFileId}?fields=id,modifiedTime,trashed`, { headers: this.driveHeaders() });
-                            if (check.ok) { const meta = await check.json(); if (!meta.trashed) { await this.driveCargarDatos(false); this.driveSincronizando = false; return; } }
-                            this.driveFileId = null;
+                        if (this.driveFileId && this.driveFileId !== 'undefined' && this.driveFileId !== 'null') {
+                            try {
+                                const check = await fetch(`${DRIVE_API}/files/${this.driveFileId}?fields=id,modifiedTime,trashed`, { headers: this.driveHeaders() });
+                                if (check.ok) {
+                                    const meta = await check.json();
+                                    if (!meta.trashed) { await this.driveCargarDatos(false); this.driveSincronizando = false; return; }
+                                }
+                            } catch (e) { /* el archivo guardado ya no es válido, seguimos a buscar/crear uno nuevo */ }
+                            this.driveFileId = null; localStorage.removeItem('drive_file_id');
                         }
                         const q = encodeURIComponent(`name='${DRIVE_CONFIG.FILE_NAME}' and trashed=false`);
                         const buscar = await fetch(`${DRIVE_API}/files?q=${q}&fields=files(id,name,modifiedTime)`, { headers: this.driveHeaders() });
+                        if (!buscar.ok) { const errBody = await buscar.text(); throw new Error('Búsqueda falló: ' + buscar.status + ' ' + errBody); }
                         const resultado = await buscar.json();
-                        if (resultado.files && resultado.files.length > 0) {
+                        if (resultado.files && resultado.files.length > 0 && resultado.files[0].id) {
                             this.driveFileId = resultado.files[0].id;
                             localStorage.setItem('drive_file_id', this.driveFileId);
                             await this.driveCargarDatos(false);
                             this.notificar('Conectado al cronograma compartido del equipo.', 'success');
                         } else {
                             const crear = await fetch(`${DRIVE_API}/files`, { method: 'POST', headers: { ...this.driveHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ name: DRIVE_CONFIG.FILE_NAME, mimeType: 'application/json' }) });
+                            if (!crear.ok) { const errBody = await crear.text(); throw new Error('Creación falló: ' + crear.status + ' ' + errBody); }
                             const nuevo = await crear.json();
+                            if (!nuevo.id) throw new Error('La API no devolvió un ID de archivo válido.');
                             this.driveFileId = nuevo.id;
                             localStorage.setItem('drive_file_id', this.driveFileId);
                             await this.driveGuardarDatos();
                             this.notificar('Se creó "' + DRIVE_CONFIG.FILE_NAME + '" en tu Google Drive. Compartilo (botón derecho → Compartir, con permiso de Editor) con el resto del equipo para que todos vean los mismos datos.', 'success');
                         }
-                    } catch (e) { this.driveError = 'Error al buscar/crear el archivo en Drive.'; console.error(e); }
+                    } catch (e) { this.driveError = 'Error al buscar/crear el archivo en Drive: ' + (e && e.message ? e.message : e); console.error(e); }
                     this.driveSincronizando = false;
                 },
                 async driveCargarDatos(manual) {
