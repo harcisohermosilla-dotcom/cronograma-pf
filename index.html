@@ -1,0 +1,1712 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cronograma de inventarios PF</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+        }
+        body {
+            background: #f0f4f9;
+            padding: 24px;
+            color: #1e293b;
+            min-height: 100vh;
+        }
+        .app-container {
+            max-width: 1500px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 32px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.15);
+            padding: 28px 32px;
+        }
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            color: #0f2b4b;
+            border-bottom: 3px solid #e9edf4;
+            padding-bottom: 20px;
+            margin-bottom: 28px;
+        }
+        h1 i {
+            color: #2563eb;
+            font-size: 2.2rem;
+            background: #dbeafe;
+            padding: 10px;
+            border-radius: 14px;
+        }
+        h1 span {
+            background: linear-gradient(135deg, #2563eb, #7c3aed);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 1.4rem;
+            margin-left: auto;
+            font-weight: 400;
+        }
+        .drive-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+            background: #f8faff;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 10px 16px;
+            margin-bottom: 20px;
+        }
+        .tabs {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 28px;
+            background: #f1f5f9;
+            padding: 6px;
+            border-radius: 16px;
+        }
+        .tab-btn {
+            padding: 12px 28px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: 0.3s;
+            background: transparent;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+            justify-content: center;
+        }
+        .tab-btn:hover {
+            background: rgba(255,255,255,0.6);
+        }
+        .tab-btn.active {
+            background: white;
+            color: #1e293b;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .tab-btn i {
+            font-size: 1.1rem;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 20px;
+            background: #f8faff;
+            padding: 12px 20px;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+        }
+        .btn {
+            background: white;
+            border: 1px solid #d1d9e6;
+            padding: 7px 16px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.78rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #1e293b;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            white-space: nowrap;
+        }
+        .btn i {
+            font-size: 0.85rem;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .btn-primary { background: #1d4ed8; border-color: #1d4ed8; color: white; }
+        .btn-primary i { color: white; }
+        .btn-primary:hover { background: #2563eb; }
+        .btn-success { background: #0b8a4b; border-color: #0b8a4b; color: white; }
+        .btn-success i { color: white; }
+        .btn-success:hover { background: #0f9e58; }
+        .btn-danger { background: #dc2626; border-color: #dc2626; color: white; }
+        .btn-danger i { color: white; }
+        .btn-danger:hover { background: #ef4444; }
+        .btn-outline { background: transparent; border: 1px solid #cbd5e1; }
+        .btn-outline:hover { background: #f1f5f9; }
+        .btn-info { background: #0891b2; border-color: #0891b2; color: white; }
+        .btn-info i { color: white; }
+        .btn-info:hover { background: #0e7490; }
+        .btn-generar { background: #7c3aed; border-color: #7c3aed; color: white; }
+        .btn-generar i { color: white; }
+        .btn-generar:hover { background: #8b5cf6; }
+        .btn-agendar { background: #f59e0b; border-color: #f59e0b; color: white; }
+        .btn-agendar i { color: white; }
+        .btn-agendar:hover { background: #d97706; }
+        .btn-ruta { background: #ec4899; border-color: #ec4899; color: white; }
+        .btn-ruta i { color: white; }
+        .btn-ruta:hover { background: #db2777; }
+        .btn-reauditar { background: #ef4444; border-color: #ef4444; color: white; }
+        .btn-reauditar i { color: white; }
+        .btn-reauditar:hover { background: #dc2626; }
+        .btn-file { background: #8b5cf6; border-color: #8b5cf6; color: white; }
+        .btn-file i { color: white; }
+        .btn-file:hover { background: #7c3aed; }
+        .btn-sm { padding: 3px 10px; font-size: 0.65rem; border-radius: 6px; }
+        .badge { background: #e2e8f0; padding: 3px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 600; }
+        .badge-primary { background: #dbeafe; color: #1e40af; }
+        .badge-success { background: #bbf7d0; color: #166534; }
+        .badge-warning { background: #fde68a; color: #92400e; }
+        .badge-danger { background: #fecaca; color: #991b1b; }
+        .search-container {
+            display: flex; gap: 6px; align-items: center; background: white; padding: 4px 12px; border-radius: 10px; border: 1px solid #d1d9e6;
+        }
+        .search-container input {
+            border: none; outline: none; padding: 5px 4px; font-size: 0.78rem; min-width: 100px; background: transparent;
+        }
+        .search-container i { color: #94a3b8; }
+        .table-wrapper {
+            overflow-x: auto; border-radius: 16px; border: 1px solid #e9edf4; margin: 16px 0; background: white;
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 0.64rem; min-width: 1200px; }
+        th {
+            background: #f1f6fd; color: #1e3a6b; font-weight: 600; padding: 6px 4px; text-align: left; white-space: nowrap;
+            border-bottom: 2px solid #dce3ec; position: sticky; top: 0; z-index: 10; font-size: 0.54rem; text-transform: uppercase; letter-spacing: 0.3px;
+        }
+        td { padding: 4px 3px; border-bottom: 1px solid #eef2f8; vertical-align: middle; }
+        tr:hover td { background: #fafcff; }
+        .input-sm { width: 100%; min-width: 42px; padding: 3px 4px; border: 1px solid #d1d9e6; border-radius: 5px; font-size: 0.6rem; background: white; transition: 0.2s; }
+        .input-sm:focus { outline: 2px solid #2563eb; border-color: transparent; }
+        .input-sm:disabled { background: #f1f5f9; color: #64748b; cursor: not-allowed; }
+        .input-date { width: 100%; min-width: 100px; padding: 3px 5px; border: 1px solid #d1d9e6; border-radius: 5px; font-size: 0.64rem; background: white; transition: 0.2s; cursor: pointer; }
+        .input-date:focus { outline: 2px solid #2563eb; border-color: transparent; }
+        .input-date:disabled { background: #f1f5f9; color: #64748b; cursor: not-allowed; }
+        .select-sm { width: 100%; padding: 3px 5px; border: 1px solid #d1d9e6; border-radius: 5px; font-size: 0.6rem; background: white; cursor: pointer; }
+        .select-sm:focus { outline: 2px solid #2563eb; border-color: transparent; }
+        .select-sm:disabled { background: #f1f5f9; color: #64748b; cursor: not-allowed; }
+        .tag-persona {
+            background: #dbeafe; color: #1e4a7a; padding: 2px 8px; border-radius: 20px; display: inline-flex; align-items: center; font-size: 0.56rem; font-weight: 500; margin: 1px 2px 1px 0;
+        }
+        .tag-supervisor {
+            background: #fde68a; color: #92400e; padding: 2px 4px 2px 8px; border-radius: 20px; display: inline-flex; align-items: center; gap: 3px; font-size: 0.56rem; font-weight: 700; margin: 1px 2px 1px 0; border: 1px solid #d97706;
+        }
+        .tag-quitar {
+            background: rgba(0,0,0,0.12); border: none; color: inherit; width: 14px; height: 14px; min-width: 14px; border-radius: 50%; cursor: pointer; font-size: 0.6rem; line-height: 1; display: flex; align-items: center; justify-content: center; padding: 0; margin-left:2px;
+        }
+        .tag-quitar:hover { background: rgba(0,0,0,0.25); }
+        .tag-pendiente { background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 20px; font-size: 0.56rem; font-weight: 600; white-space: nowrap; }
+        .tag-agendado { background: #bfdbfe; color: #1e40af; padding: 2px 8px; border-radius: 20px; font-size: 0.56rem; font-weight: 600; white-space: nowrap; }
+        .tag-auditado { background: #bbf7d0; color: #166534; padding: 2px 8px; border-radius: 20px; font-size: 0.56rem; font-weight: 600; white-space: nowrap; }
+        .tag-generado { background: #ddd6fe; color: #5b21b6; padding: 2px 8px; border-radius: 20px; font-size: 0.56rem; font-weight: 600; white-space: nowrap; }
+        .tag-reauditado { background: #fecaca; color: #991b1b; padding: 2px 8px; border-radius: 20px; font-size: 0.56rem; font-weight: 600; white-space: nowrap; }
+        .personas-container { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; }
+        .footer-actions { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-top: 16px; border-top: 2px solid #e9edf4; padding-top: 16px; }
+        .grupo-info { background: #f1f5f9; padding: 6px 16px; border-radius: 12px; font-size: 0.8rem; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .whatsapp-share { background: #25D366; color: white; border: none; }
+        .whatsapp-share i { color: white; }
+        .whatsapp-share:hover { background: #20b85f; }
+        .text-muted { color: #64748b; font-size: 0.65rem; }
+        .flex-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+        .checkbox-punto { width: 16px; height: 16px; cursor: pointer; accent-color: #2563eb; }
+        
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(6px); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 20px;
+        }
+        .modal-content {
+            background: white; border-radius: 24px; max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 28px 32px; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3); position: relative; animation: modalIn 0.3s ease;
+        }
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.95) translateY(20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .modal-content h2 { font-size: 1.3rem; color: #0f2b4b; border-bottom: 2px solid #e9edf4; padding-bottom: 12px; margin-bottom: 16px; }
+        .modal-content .close-modal {
+            position: sticky; top: 0; float: right; background: none; border: none; font-size: 1.8rem; cursor: pointer; color: #94a3b8; transition: 0.2s;
+        }
+        .modal-content .close-modal:hover { color: #1e293b; transform: scale(1.1); }
+        .modal-content .auditor-item { display: flex; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid #eef2f8; font-size: 0.85rem; }
+        .modal-content .auditor-item:last-child { border-bottom: none; }
+        .modal-content .auditor-item .nombre { font-weight: 500; }
+        .cronograma-output {
+            font-family: 'Segoe UI', system-ui, sans-serif; line-height: 1.8; white-space: pre-wrap; word-wrap: break-word; background: #fafcff; padding: 18px 22px; border-radius: 14px; border: 1px solid #e9edf4; font-size: 0.9rem;
+        }
+        .stats-badge { background: #e2e8f0; padding: 2px 10px; border-radius: 20px; font-size: 0.65rem; font-weight: 600; }
+        .seleccion-todos { display: flex; align-items: center; gap: 4px; font-weight: 500; font-size: 0.65rem; }
+        .seleccion-todos input[type="checkbox"] { width: 14px; height: 14px; cursor: pointer; accent-color: #2563eb; }
+        .progreso-container { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; background: #f1f5f9; padding: 4px 14px; border-radius: 12px; }
+        .progreso-item { display: flex; align-items: center; gap: 4px; font-size: 0.7rem; font-weight: 500; }
+        .progreso-item .barra { width: 60px; height: 6px; background: #e2e8f0; border-radius: 20px; overflow: hidden; }
+        .progreso-item .barra .fill { height: 100%; border-radius: 20px; background: linear-gradient(90deg, #2563eb, #7c3aed); transition: width 0.5s ease; }
+        .progreso-item .porcentaje { font-weight: 700; font-size: 0.7rem; min-width: 32px; }
+        
+        /* Stats & Params */
+        .resumen-params { display: grid; grid-template-columns: repeat(auto-fit, minmax(85px, 1fr)); gap: 8px; margin: 8px 0; }
+        .resumen-params .param-item { background: #f8faff; padding: 8px 10px; border-radius: 12px; border: 1px solid #e2e8f0; text-align: center; transition: 0.2s; cursor: pointer; }
+        .resumen-params .param-item:hover { border-color: #2563eb; background: #eff6ff; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(37,99,235,0.15); }
+        .resumen-params .param-item .valor { font-size: 1.2rem; font-weight: 700; }
+        .resumen-params .param-item .valor a { color: #2563eb; text-decoration: none; cursor: pointer; transition: 0.2s; }
+        .resumen-params .param-item .valor a:hover { text-decoration: underline; color: #1d4ed8; }
+        .resumen-params .param-item .etiqueta { font-size: 0.6rem; color: #64748b; }
+        .color-indicador { width: 10px; height: 10px; border-radius: 4px; display: inline-block; margin-right: 4px; }
+        .resumen-grupos { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 6px; margin: 8px 0; }
+        .resumen-grupos .grupo-item { background: #f8faff; padding: 6px 10px; border-radius: 12px; border: 1px solid #e2e8f0; text-align: center; transition: 0.2s; cursor: pointer; }
+        .resumen-grupos .grupo-item:hover { border-color: #2563eb; background: #eff6ff; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(37,99,235,0.15); }
+        .resumen-grupos .grupo-item .valor { font-size: 1rem; font-weight: 700; color: #2563eb; }
+        .resumen-grupos .grupo-item .valor a { color: #2563eb; text-decoration: none; cursor: pointer; transition: 0.2s; }
+        .resumen-grupos .grupo-item .valor a:hover { text-decoration: underline; color: #1d4ed8; }
+        .resumen-grupos .grupo-item .etiqueta { font-size: 0.55rem; color: #64748b; }
+        .estado-stats { display: flex; gap: 8px; flex-wrap: wrap; }
+        .estado-stats .stat-item { display: flex; align-items: center; gap: 3px; font-size: 0.7rem; font-weight: 500; }
+        .estado-stats .stat-item .num { font-weight: 700; font-size: 0.8rem; }
+        .ruta-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-bottom: 1px solid #eef2f8; }
+        .ruta-item .orden { font-weight: 700; color: #2563eb; margin-right: 10px; background: #dbeafe; padding: 2px 10px; border-radius: 20px; font-size: 0.75rem; }
+        .ruta-item .info { flex: 1; }
+        .ruta-item .distancia { color: #64748b; font-size: 0.7rem; }
+        .ruta-total { margin-top: 12px; padding: 10px; background: linear-gradient(135deg, #ede9fe, #dbeafe); border-radius: 12px; text-align: center; font-weight: 600; font-size: 0.85rem; }
+        .input-group { display: flex; gap: 6px; align-items: center; margin: 3px 0; }
+        .input-group input { padding: 4px 10px; border: 1px solid #d1d9e6; border-radius: 8px; font-size: 0.75rem; transition: 0.2s; }
+        .input-group input:focus { outline: 2px solid #2563eb; border-color: transparent; }
+        .file-input-wrapper { position: relative; overflow: hidden; display: inline-block; }
+        .file-input-wrapper input[type=file] { position: absolute; left: 0; top: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+        .motivo-item { display: flex; align-items: center; gap: 12px; padding: 8px 14px; border: 2px solid #e2e8f0; border-radius: 12px; cursor: pointer; transition: 0.2s; margin: 4px 0; }
+        .motivo-item:hover { border-color: #94a3b8; background: #f8faff; }
+        .motivo-item.seleccionado { border-color: #2563eb; background: #dbeafe; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); }
+        .motivo-item i { font-size: 1rem; color: #2563eb; }
+        .motivo-item .motivo-texto { flex: 1; font-weight: 600; font-size: 0.85rem; }
+        .motivo-item .motivo-desc { font-size: 0.7rem; color: #64748b; }
+        
+        /* Table Details */
+        .dias-cell { padding: 3px 8px; border-radius: 6px; font-weight: 700; text-align: center; display: inline-block; min-width: 35px; }
+        .celda-verde { background-color: #bbf7d0 !important; color: #166534; }
+        .celda-amarillo { background-color: #fde68a !important; color: #92400e; }
+        .celda-naranja { background-color: #fdba74 !important; color: #9a3412; }
+        .celda-rojo { background-color: #fca5a5 !important; color: #991b1b; }
+        .celda-rojo-fuerte { background-color: #ef4444 !important; color: white !important; }
+        .btn-eliminar-fila { color: #ef4444; background: transparent; border: none; cursor: pointer; padding: 2px 6px; font-size: 0.75rem; transition: 0.2s; border-radius: 6px; }
+        .btn-eliminar-fila:hover { background: #fecaca; transform: scale(1.1); }
+        .col-acciones { min-width: 50px; text-align: center; }
+        .badge-verde { background: #bbf7d0; color: #166534; }
+        .badge-amarillo { background: #fde68a; color: #92400e; }
+        .badge-naranja { background: #fdba74; color: #9a3412; }
+        .badge-rojo { background: #fca5a5; color: #991b1b; }
+        .badge-rojo-fuerte { background: #ef4444; color: white; }
+        .password-input { padding: 8px 14px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 1rem; width: 100%; max-width: 250px; text-align: center; letter-spacing: 4px; }
+        .password-input:focus { outline: 2px solid #2563eb; border-color: transparent; }
+        .modal-eliminar { max-width: 450px; text-align: center; }
+        .modal-eliminar .icono-peligro { font-size: 4rem; color: #ef4444; margin-bottom: 12px; }
+        .modal-eliminar .mensaje-peligro { color: #991b1b; font-weight: 600; font-size: 1.1rem; margin-bottom: 8px; }
+        .modal-eliminar .mensaje-sub { color: #64748b; font-size: 0.9rem; margin-bottom: 16px; }
+        
+        .select-estado {
+            border: none; outline: none; cursor: pointer; -webkit-appearance: none; -moz-appearance: none; appearance: none; text-align: center; font-family: inherit; padding: 2px 20px 2px 8px; border-radius: 20px; font-size: 0.56rem; font-weight: 600; white-space: nowrap; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23334155'><path d='M7 10l5 5 5-5z'/></svg>"); background-repeat: no-repeat; background-position: right 4px center; background-size: 11px;
+        }
+        .select-estado:focus { box-shadow: 0 0 0 2px rgba(37,99,235,0.35); }
+        .col-fecha { min-width: 105px; }
+        .no-edit { background: #f1f5f9 !important; color: #475569 !important; cursor: not-allowed !important; }
+        .no-edit:focus { outline: none !important; }
+        .bloqueado { opacity: 0.7; }
+        .search-auditor { width: 100%; padding: 6px 12px; border: 1px solid #d1d9e6; border-radius: 8px; font-size: 0.78rem; margin-bottom: 10px; }
+        .search-auditor:focus { outline: 2px solid #2563eb; border-color: transparent; }
+        
+        /* Selector Components */
+        .selector-auditor { position: relative; display: inline-block; }
+        .selector-auditor-btn { background: white; border: 1px solid #d1d9e6; border-radius: 6px; padding: 4px 8px; font-size: 0.65rem; font-weight: 600; color: #2563eb; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; transition: 0.15s; white-space: nowrap; }
+        .selector-auditor-btn:hover:not(:disabled) { background: #eff6ff; border-color: #2563eb; }
+        .selector-auditor-btn:disabled { color: #94a3b8; cursor: not-allowed; background: #f1f5f9; }
+        .selector-auditor-panel { background: white; border: 1px solid #cbd5e1; border-radius: 10px; box-shadow: 0 12px 28px rgba(15,23,42,0.18); z-index: 3000; overflow: hidden; display: flex; flex-direction: column; }
+        .selector-auditor-input { border: none; border-bottom: 1px solid #e2e8f0; padding: 8px 10px; font-size: 0.78rem; outline: none; width: 100%; }
+        .selector-auditor-input:focus { border-bottom-color: #2563eb; }
+        .selector-auditor-lista { max-height: 190px; overflow-y: auto; }
+        .selector-auditor-item { padding: 7px 10px; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+        .selector-auditor-item:hover, .selector-auditor-item.activo { background: #dbeafe; color: #1e40af; }
+        .selector-auditor-vacio { padding: 10px; font-size: 0.72rem; color: #94a3b8; text-align: center; }
+
+        /* Notifications & Bitacora */
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; max-width: 360px; }
+        .toast { background: #1e293b; color: white; padding: 12px 14px 12px 18px; border-radius: 12px; font-size: 0.82rem; font-weight: 500; box-shadow: 0 10px 25px rgba(0,0,0,0.25); display: flex; align-items: center; gap: 10px; animation: toastIn 0.25s ease; }
+        .toast span { flex: 1; }
+        .toast-cerrar { background: rgba(255,255,255,0.15); border: none; color: white; width: 20px; height: 20px; min-width: 20px; border-radius: 50%; cursor: pointer; font-size: 0.7rem; display: flex; align-items: center; justify-content: center; transition: 0.15s; }
+        .toast-cerrar:hover { background: rgba(255,255,255,0.3); }
+        .toast.success { background: #0b8a4b; }
+        .toast.error { background: #dc2626; }
+        .toast.warning { background: #d97706; }
+        .toast.info { background: #1d4ed8; }
+        @keyframes toastIn { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
+        .toast-anim-enter-active { transition: opacity 0.2s ease, transform 0.2s ease; }
+        .toast-anim-leave-active { transition: opacity 0.18s ease, transform 0.18s ease, max-height 0.18s ease, margin 0.18s ease; position: relative; }
+        .toast-anim-enter { opacity: 0; transform: translateX(30px); }
+        .toast-anim-leave-to { opacity: 0; transform: translateX(30px) scale(0.95); }
+        .toast-anim-move { transition: transform 0.2s ease; }
+        .header-icon-btn { position: relative; background: #f1f5f9; border: 1px solid #e2e8f0; width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #475569; font-size: 1.05rem; transition: 0.2s; flex-shrink: 0; }
+        .header-icon-btn:hover { background: #e2e8f0; color: #1e293b; }
+        .header-icon-btn .badge-count { position: absolute; top: -6px; right: -6px; background: #dc2626; color: white; font-size: 0.6rem; font-weight: 700; min-width: 18px; height: 18px; border-radius: 20px; display: flex; align-items: center; justify-content: center; padding: 0 4px; border: 2px solid white; }
+        .notif-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-bottom: 1px solid #eef2f8; font-size: 0.8rem; }
+        .notif-item:last-child { border-bottom: none; }
+        .notif-item .notif-icono { width: 26px; height: 26px; min-width: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.7rem; }
+        .notif-item .notif-icono.success { background: #0b8a4b; }
+        .notif-item .notif-icono.error { background: #dc2626; }
+        .notif-item .notif-icono.warning { background: #d97706; }
+        .notif-item .notif-icono.info { background: #1d4ed8; }
+        .notif-item .notif-fecha { font-size: 0.65rem; color: #94a3b8; margin-top: 2px; }
+        .bitacora-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+        .bitacora-item { display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; border-bottom: 1px solid #eef2f8; font-size: 0.78rem; }
+        .bitacora-item:last-child { border-bottom: none; }
+        .bitacora-item .bitacora-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .bitacora-item .bitacora-modulo { font-size: 0.6rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; text-transform: uppercase; }
+        .bitacora-item .bitacora-modulo.pf { background: #dbeafe; color: #1e40af; }
+        .bitacora-item .bitacora-modulo.cl { background: #ede9fe; color: #5b21b6; }
+        .bitacora-item .bitacora-modulo.global { background: #f1f5f9; color: #475569; }
+        .bitacora-item .bitacora-accion { font-weight: 700; color: #1e293b; }
+        .bitacora-item .bitacora-fecha { margin-left: auto; font-size: 0.65rem; color: #94a3b8; }
+        .bitacora-item .bitacora-detalle { color: #475569; }
+        .indicador-guardado { display: flex; align-items: center; gap: 5px; font-size: 0.62rem; color: #16a34a; font-weight: 600; margin-left: 0 !important; background: none !important; -webkit-background-clip: initial !important; -webkit-text-fill-color: #16a34a !important; }
+        .indicador-guardado.guardando { color: #d97706; -webkit-text-fill-color: #d97706 !important; }
+        @media (max-width: 768px) {
+            .app-container { padding: 16px; }
+            .toolbar { padding: 10px 14px; }
+            .modal-content { padding: 18px; }
+            h1 { font-size: 1.4rem; }
+            .tab-btn { padding: 8px 12px; font-size: 0.8rem; }
+        }
+    </style>
+</head>
+<body>
+<div id="app" class="app-container" v-cloak>
+    <transition-group name="toast-anim" tag="div" class="toast-container">
+        <div class="toast" v-for="t in toasts" :key="t.id" :class="t.tipo">
+            <i :class="toastIcono(t.tipo)"></i>
+            <span>{{ t.mensaje }}</span>
+            <button class="toast-cerrar" @click="notifCerrar(t.id)" title="Cerrar"><i class="fas fa-times"></i></button>
+        </div>
+    </transition-group>
+
+    <h1>
+        <i class="fas fa-clipboard-list"></i>
+        Cronograma de inventarios PF
+        <span><i class="fas fa-calendar-alt"></i> {{ fechaActual }}</span>
+        <span class="indicador-guardado" :class="{ guardando: guardando }" :title="guardando ? 'Guardando cambios…' : 'Datos guardados en este navegador'">
+            <i :class="guardando ? 'fas fa-sync-alt fa-spin' : 'fas fa-check-circle'"></i>
+            {{ guardando ? 'Guardando...' : 'Guardado' }}
+        </span>
+        <button class="header-icon-btn" @click="mostrarNotificacionesModal = true" title="Notificaciones">
+            <i class="fas fa-bell"></i>
+            <span class="badge-count" v-if="historialNotificaciones.length">{{ historialNotificaciones.length > 99 ? '99+' : historialNotificaciones.length }}</span>
+        </button>
+        <button class="header-icon-btn" @click="mostrarBitacoraModal = true" title="Bitácora de auditoría">
+            <i class="fas fa-book"></i>
+            <span class="badge-count" v-if="bitacora.length">{{ bitacora.length > 99 ? '99+' : bitacora.length }}</span>
+        </button>
+    </h1>
+
+    <!-- Barra de estado de Google Drive -->
+    <div class="drive-bar">
+        <template v-if="!driveConectado">
+            <i class="fab fa-google-drive" style="color:#94a3b8;"></i>
+            <span style="color:#64748b; font-size:0.85rem;">Datos guardados solo en este navegador (no compartidos con el equipo).</span>
+            <button class="btn btn-primary" style="margin-left:auto;" @click="driveConectar(true)" :disabled="driveConectando">
+                <i class="fab fa-google-drive"></i> {{ driveConectando ? 'Conectando...' : 'Conectar Google Drive' }}
+            </button>
+        </template>
+        <template v-else>
+            <i class="fab fa-google-drive" style="color:#16a34a;"></i>
+            <span style="font-size:0.85rem;"><strong>Conectado</strong> {{ driveUsuario ? ('· ' + driveUsuario) : '' }}</span>
+            <span style="font-size:0.8rem; color:#64748b;" v-if="driveSincronizando"><i class="fas fa-sync-alt fa-spin"></i> Sincronizando...</span>
+            <span style="font-size:0.8rem; color:#64748b;" v-else-if="driveUltimaSync">Últ. sync: {{ driveUltimaSync }}</span>
+            <div style="margin-left:auto; display:flex; gap:8px;">
+                <button class="btn btn-outline" @click="driveCargarDatos(true)" title="Traer últimos cambios del equipo"><i class="fas fa-cloud-download-alt"></i> Actualizar</button>
+                <button class="btn btn-outline" @click="driveDesconectar">Desconectar</button>
+            </div>
+        </template>
+        <div v-if="driveError" style="width:100%; color:#dc2626; font-size:0.8rem; margin-top:6px;"><i class="fas fa-exclamation-triangle"></i> {{ driveError }}</div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab-btn" :class="{ active: tabActivo === 'pf' }" @click="tabActivo = 'pf'">
+            <i class="fas fa-store"></i> Puntos de Ventas
+        </button>
+        <button class="tab-btn" :class="{ active: tabActivo === 'cl' }" @click="tabActivo = 'cl'">
+            <i class="fas fa-warehouse"></i> Centro Logístico
+        </button>
+    </div>
+
+    <!-- Módulo PF -->
+    <div class="tab-content" :class="{ active: tabActivo === 'pf' }">
+        <div class="toolbar">
+            <span class="badge badge-primary"><i class="far fa-clock"></i> Límite: 180 días</span>
+            <div class="search-container">
+                <i class="fas fa-search"></i>
+                <input type="text" v-model="pfBuscar" placeholder="Buscar PDV...">
+            </div>
+            <div class="search-container">
+                <i class="fas fa-tags"></i>
+                <input type="text" v-model="pfGrupo" placeholder="Buscar Grupo...">
+            </div>
+            <div class="search-container" style="min-width:130px;">
+                <i class="fas fa-filter"></i>
+                <select v-model="pfFiltroDias" style="border:none;outline:none;padding:4px 4px;font-size:0.75rem;background:transparent;cursor:pointer;">
+                    <option value="">Todos los días</option>
+                    <option value="verde">&lt; 150 días</option>
+                    <option value="amarillo">150 - 170 días</option>
+                    <option value="naranja">170 - 175 días</option>
+                    <option value="rojo">175 - 180 días</option>
+                    <option value="rojo-fuerte">&gt; 180 días</option>
+                </select>
+            </div>
+            <div class="progreso-container">
+                <div class="progreso-item">
+                    <i class="fas fa-chart-line" style="color:#2563eb;"></i>
+                    <span>Gral:</span>
+                    <div class="barra"><div class="fill" :style="{ width: pfProgreso + '%' }"></div></div>
+                    <span class="porcentaje">{{ pfProgreso }}%</span>
+                </div>
+                <div class="progreso-item">
+                    <i class="fas fa-calendar-check" style="color:#7c3aed;"></i>
+                    <span>Mes:</span>
+                    <div class="barra"><div class="fill" :style="{ width: pfProgresoMes + '%', background: 'linear-gradient(90deg, #7c3aed, #a855f7)' }"></div></div>
+                    <span class="porcentaje">{{ pfProgresoMes }}%</span>
+                </div>
+            </div>
+            <span style="flex:1"></span>
+            <button class="btn btn-primary" @click="pfAgregarFila" :disabled="pfBloqueado"><i class="fas fa-plus"></i> Agregar</button>
+            <button class="btn btn-success" @click="pfExportarCSV"><i class="fas fa-file-export"></i> CSV</button>
+            <button class="btn btn-info" @click="pfMostrarResumen = true"><i class="fas fa-chart-pie"></i> Resumen</button>
+            <button class="btn btn-info" @click="mostrarListadoAuditores('pf')"><i class="fas fa-users"></i> Ver Auditores</button>
+            <button class="btn btn-ruta" @click="pfMostrarRuta"><i class="fas fa-route"></i> Ruta</button>
+            <button class="btn btn-agendar" @click="pfToggleAgendar"><i class="fas fa-calendar-plus"></i> Agendar</button>
+            <button class="btn btn-generar" @click="pfGenerar"><i class="fas fa-sync-alt"></i> Generar</button>
+            <button class="btn btn-success" style="background-color: #25D366; border-color: #25D366;" @click="restaurarMensaje(ultimoMensajePF)" v-if="ultimoMensajePF"><i class="fab fa-whatsapp"></i> Último Mensaje</button>
+            <button class="btn btn-reauditar" @click="pfAbrirReauditar"><i class="fas fa-undo"></i> Reauditar</button>
+            <button class="btn btn-danger" @click="abrirEliminarTodo('pf')"><i class="fas fa-trash-alt"></i> Eliminar Todo</button>
+        </div>
+
+        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; align-items:center; background:#f8faff; padding:8px 18px; border-radius:12px; border:1px solid #e2e8f0;">
+            <span style="font-weight:600; font-size:0.75rem; color:#475569;"><i class="fas fa-users" style="color:#2563eb;"></i> Auditores</span>
+            <div class="file-input-wrapper">
+                <button class="btn btn-file btn-sm"><i class="fas fa-file-import"></i> Importar Auditores</button>
+                <input type="file" accept=".xlsx,.xls" @change="pfImportarAuditores($event)">
+            </div>
+            <div class="file-input-wrapper">
+                <button class="btn btn-success btn-sm"><i class="fas fa-database"></i> Importar BD</button>
+                <input type="file" accept=".xlsx,.xls" @change="pfImportarBD($event)">
+            </div>
+            <div class="input-group" style="flex:1; min-width:180px;">
+                <input type="text" v-model="pfNuevoAuditorNombre" placeholder="Nombre y Apellido" style="flex:1;" @keyup.enter="pfAgregarAuditor">
+                <button class="btn btn-primary btn-sm" @click="pfAgregarAuditor"><i class="fas fa-plus"></i></button>
+            </div>
+            <span class="badge badge-primary">Total: {{ pfAuditores.length }}</span>
+            <button class="btn btn-info btn-sm" @click="mostrarListadoAuditores('pf')"><i class="fas fa-eye"></i> Ver</button>
+        </div>
+
+        <div class="table-wrapper" v-if="pfFilasFiltradas.length > 0">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:30px;">
+                            <div class="seleccion-todos"><input type="checkbox" v-model="pfSeleccionarTodos" @change="pfToggleTodos"></div>
+                        </th>
+                        <th>NRO_SUCURSAL</th>
+                        <th>ESTR_COD</th>
+                        <th>ESTR_DESCRIPCION</th>
+                        <th>UBIC_TIPO</th>
+                        <th>UBIC_ABREVIATURA</th>
+                        <th>AÑO_APER</th>
+                        <th class="col-fecha">Ultimo Inventario</th>
+                        <th>Días</th>
+                        <th style="min-width:90px;">Hora Convocatoria</th>
+                        <th style="min-width:90px;">Hora Salida</th>
+                        <th>CLUS_DESCRIPCION</th>
+                        <th>CANT_GONDOLAS</th>
+                        <th>ESTR_GRUPOS</th>
+                        <th>ENCAR_FCH_NACI</th>
+                        <th>ANTIGUEDAD_ENCAR</th>
+                        <th>ESTR_DESCRI</th>
+                        <th>NOMBRE_ENCARGADO</th>
+                        <th>NOMBRE_SUPERVISOR</th>
+                        <th>NOMBRE_ADMINITRATIVO</th>
+                        <th style="min-width:150px;">Auditores</th>
+                        <th style="min-width:130px;">Supervisor(es)</th>
+                        <th style="min-width:80px;">Estado</th>
+                        <th style="min-width:70px;">Motivo</th>
+                        <th class="col-acciones">✕</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(fila, index) in pfFilasFiltradas" :key="fila._uid">
+                        <td><input type="checkbox" class="checkbox-punto" v-model="fila.seleccionado"></td>
+                        <td><input class="input-sm" :class="{ 'no-edit': pfBloqueado }" v-model="fila.NRO_SUCURSAL" :disabled="pfBloqueado" style="min-width:40px;"></td>
+                        <td><input class="input-sm" :class="{ 'no-edit': pfBloqueado }" v-model="fila.ESTR_COD" :disabled="pfBloqueado" style="min-width:40px;"></td>
+                        <td><input class="input-sm" :class="{ 'no-edit': pfBloqueado }" v-model="fila.ESTR_DESCRIPCION" :disabled="pfBloqueado"></td>
+                        <td><input class="input-sm" :class="{ 'no-edit': pfBloqueado }" v-model="fila.UBIC_TIPO" :disabled="pfBloqueado" style="min-width:50px;"></td>
+                        <td><input class="input-sm" :class="{ 'no-edit': pfBloqueado }" v-model="fila.UBIC_ABREVIATURA" :disabled="pfBloqueado" style="min-width:40px;"></td>
+                        <td><input class="input-sm" :class="{ 'no-edit': pfBloqueado }" v-model="fila.AÑO_APER" :disabled="pfBloqueado" style="min-width:40px;"></td>
+                        <td><input class="input-date" type="date" v-model="fila.Ultimo_Inventario" @change="pfCalcularDias(index)" style="min-width:120px;"></td>
+                        <td><span class="dias-cell" :class="fila.colorClase">{{ fila.dias !== null ? fila.dias : '-' }}</span></td>
+                        <td><input class="input-sm" type="time" v-model="fila.horaConvocatoria" style="min-width:80px;"></td>
+                        <td><input class="input-sm" type="time" v-model="fila.horaSalida" style="min-width:80px;"></td>
+                        <td><input class="input-sm" :class="{ 'no-edit': pfBloqueado }" v-model="fila.CLUS_DESCRIPCION" :disabled="pfBloqueado"></td>
+                        <td><input class="input-sm" :class="{ 'no-edit': pfBloqueado }" v-model="fila.CANT_GONDOLAS" :disabled="pfBloqueado" style="min-width:30px;"></td>
+                        <td><input class="input-sm" :class="{ 'no-edit': pfBloqueado }" v-model="fila.ESTR_GRUPOS" :disabled="pfBloqueado" style="min-width:40px;"></td>
+                        <td><input class="input-sm" :class="{ 'no-edit': pfBloqueado }" v-model="fila.ENCAR_FCH_NACI" :disabled="pfBloqueado" style="min-width:60px;"></td>
+                        <td><input class="input-sm" :class="{ 'no-edit': pfBloqueado }" v-model="fila.ANTIGUEDAD_ENCAR" :disabled="pfBloqueado" style="min-width:30px;"></td>
+                        <td><input class="input-sm" :class="{ 'no-edit': pfBloqueado }" v-model="fila.ESTR_DESCRI" :disabled="pfBloqueado"></td>
+                        <td><input class="input-sm" :class="{ 'no-edit': pfBloqueado }" v-model="fila.NOMBRE_ENCARGADO" :disabled="pfBloqueado"></td>
+                        <td><input class="input-sm" :class="{ 'no-edit': pfBloqueado }" v-model="fila.NOMBRE_SUPERVISOR" :disabled="pfBloqueado"></td>
+                        <td><input class="input-sm" :class="{ 'no-edit': pfBloqueado }" v-model="fila.NOMBRE_ADMINITRATIVO" :disabled="pfBloqueado"></td>
+                        <td>
+                            <div class="personas-container">
+                                <span class="tag-persona" v-for="p in fila.personasSeleccionadas" :key="p">
+                                    {{ obtenerNombreApellido(p) }}
+                                    <label style="margin-left:6px; display:inline-flex; align-items:center; cursor:pointer;" title="Marcar para asignar herramienta WiFi">
+                                        <input type="checkbox" :checked="fila.auditoresWifi && fila.auditoresWifi.includes(p)" @change="toggleWifi(fila, p)" style="margin-right:3px; cursor:pointer; accent-color:#10b981; width:12px; height:12px;">
+                                        <i class="fas fa-wifi" :style="{ color: (fila.auditoresWifi && fila.auditoresWifi.includes(p)) ? '#10b981' : '#94a3b8' }"></i>
+                                    </label>
+                                </span>
+                                <selector-auditor :opciones="pfAuditoresDisponibles(fila)" @seleccionar="pfAgregarPersona(index, $event)"></selector-auditor>
+                                <button class="btn btn-outline btn-sm" style="padding:0 6px; font-size:0.55rem;" @click="pfQuitarPersona(index)" :disabled="fila.personasSeleccionadas.length === 0" title="Quitar último auditor"><i class="fas fa-times"></i></button>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="personas-container">
+                                <span class="tag-supervisor" v-for="s in fila.supervisoresSeleccionados" :key="s">
+                                    ⭐ {{ obtenerNombreApellido(s) }}
+                                    <label style="margin-left:6px; margin-right:4px; display:inline-flex; align-items:center; cursor:pointer;" title="Marcar para asignar herramienta WiFi">
+                                        <input type="checkbox" :checked="fila.auditoresWifi && fila.auditoresWifi.includes(s)" @change="toggleWifi(fila, s)" style="margin-right:3px; cursor:pointer; accent-color:#10b981; width:12px; height:12px;">
+                                        <i class="fas fa-wifi" :style="{ color: (fila.auditoresWifi && fila.auditoresWifi.includes(s)) ? '#10b981' : '#94a3b8' }"></i>
+                                    </label>
+                                    <button class="tag-quitar" @click="pfQuitarSupervisor(index, s)" title="Quitar supervisor">×</button>
+                                </span>
+                                <select class="select-sm" v-model="fila.supervisorTemp" @change="pfAgregarSupervisor(index)" v-if="pfSupervisoresDisponibles(fila).length > 0">
+                                    <option value="">+ Agregar</option>
+                                    <option v-for="p in pfSupervisoresDisponibles(fila)" :key="p" :value="p">{{ obtenerNombreApellido(p) }}</option>
+                                </select>
+                            </div>
+                        </td>
+                        <td>
+                            <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
+                                <select class="select-estado" :class="'tag-' + fila.estado" v-model="fila.estado" @change="pfCambiarEstado(index)" title="Cambiar estado manualmente">
+                                    <option value="pendiente">⏳ Pendiente</option>
+                                    <option value="agendado">📅 Agendado</option>
+                                    <option value="generado">📋 Generado</option>
+                                    <option value="auditado">✅ Auditado</option>
+                                    <option value="reauditado">🔄 Reauditado</option>
+                                </select>
+                                <i v-if="fila.esReauditoria" class="fas fa-redo-alt" style="color:#dc2626; font-size:0.7rem;" title="Este registro es una reauditoría"></i>
+                                <i v-if="fila.tieneReauditoria" class="fas fa-link" style="color:#7c3aed; font-size:0.7rem;" title="Este registro generó una reauditoría posterior"></i>
+                            </div>
+                        </td>
+                        <td style="font-size:0.56rem; color:#64748b; max-width:100px; word-break:break-word;">{{ fila.motivoReauditoria || '-' }}</td>
+                        <td><button class="btn-eliminar-fila" @click="pfEliminarFila(index)"><i class="fas fa-trash-alt"></i></button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div v-else style="text-align:center; padding:40px; color:#94a3b8;">
+            <i class="fas fa-inbox" style="font-size:2.2rem; display:block; margin-bottom:10px;"></i>
+            No hay puntos de venta que coincidan con los filtros actuales.
+        </div>
+        
+        <div class="footer-actions">
+            <div class="grupo-info">
+                <i class="fas fa-store" style="color:#2563eb;"></i> <strong>PV:</strong> <span>{{ pfFilas.length }}</span>
+                <span class="stats-badge badge-primary">✓ Sel: {{ pfSeleccionados }}</span>
+                <div class="estado-stats">
+                    <span class="stat-item"><span class="num" style="color:#92400e;">{{ pfPendientes }}</span> ⏳</span>
+                    <span class="stat-item"><span class="num" style="color:#1e40af;">{{ pfAgendados }}</span> 📅</span>
+                    <span class="stat-item"><span class="num" style="color:#5b21b6;">{{ pfGenerados }}</span> 📋</span>
+                    <span class="stat-item"><span class="num" style="color:#166534;">{{ pfAuditados }}</span> ✅</span>
+                    <span class="stat-item"><span class="num" style="color:#991b1b;">{{ pfReauditados }}</span> 🔄</span>
+                </div>
+            </div>
+            <div class="flex-row">
+                <span class="badge badge-verde"><i class="fas fa-square"></i> &lt;150</span>
+                <span class="badge badge-amarillo"><i class="fas fa-square"></i> 150-170</span>
+                <span class="badge badge-naranja"><i class="fas fa-square"></i> 170-175</span>
+                <span class="badge badge-rojo"><i class="fas fa-square"></i> 175-180</span>
+                <span class="badge badge-rojo-fuerte"><i class="fas fa-square"></i> &gt;180</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Módulo CL (Centro Logístico) -->
+    <div class="tab-content" :class="{ active: tabActivo === 'cl' }">
+        <div class="toolbar">
+            <span class="badge badge-primary"><i class="far fa-clock"></i> Límite: 180 días</span>
+            <div class="search-container">
+                <i class="fas fa-search"></i>
+                <input type="text" v-model="clBuscar" placeholder="Buscar Depósito...">
+            </div>
+            <div class="search-container">
+                <i class="fas fa-tags"></i>
+                <input type="text" v-model="clSector" placeholder="Buscar Sector...">
+            </div>
+            <div class="search-container" style="min-width:130px;">
+                <i class="fas fa-filter"></i>
+                <select v-model="clFiltroDias" style="border:none;outline:none;padding:4px 4px;font-size:0.75rem;background:transparent;cursor:pointer;">
+                    <option value="">Todos los días</option>
+                    <option value="verde">&lt; 150 días</option>
+                    <option value="amarillo">150 - 170 días</option>
+                    <option value="naranja">170 - 175 días</option>
+                    <option value="rojo">175 - 180 días</option>
+                    <option value="rojo-fuerte">&gt; 180 días</option>
+                </select>
+            </div>
+            <div class="progreso-container">
+                <div class="progreso-item">
+                    <i class="fas fa-chart-line" style="color:#2563eb;"></i>
+                    <span>Gral:</span>
+                    <div class="barra"><div class="fill" :style="{ width: clProgreso + '%' }"></div></div>
+                    <span class="porcentaje">{{ clProgreso }}%</span>
+                </div>
+                <div class="progreso-item">
+                    <i class="fas fa-calendar-check" style="color:#7c3aed;"></i>
+                    <span>Mes:</span>
+                    <div class="barra"><div class="fill" :style="{ width: clProgresoMes + '%', background: 'linear-gradient(90deg, #7c3aed, #a855f7)' }"></div></div>
+                    <span class="porcentaje">{{ clProgresoMes }}%</span>
+                </div>
+            </div>
+            <span style="flex:1"></span>
+            <button class="btn btn-primary" @click="clAgregarFila" :disabled="clBloqueado"><i class="fas fa-plus"></i> Agregar</button>
+            <button class="btn btn-success" @click="clExportarCSV"><i class="fas fa-file-export"></i> CSV</button>
+            <button class="btn btn-info" @click="clMostrarResumen = true"><i class="fas fa-chart-pie"></i> Resumen</button>
+            <button class="btn btn-info" @click="mostrarListadoAuditores('cl')"><i class="fas fa-users"></i> Ver Auditores</button>
+            <button class="btn btn-agendar" @click="clToggleAgendar"><i class="fas fa-calendar-plus"></i> Agendar</button>
+            <button class="btn btn-generar" @click="clGenerar"><i class="fas fa-sync-alt"></i> Generar</button>
+            <button class="btn btn-success" style="background-color: #25D366; border-color: #25D366;" @click="restaurarMensaje(ultimoMensajeCL)" v-if="ultimoMensajeCL"><i class="fab fa-whatsapp"></i> Último Mensaje</button>
+            <button class="btn btn-reauditar" @click="clAbrirReauditar"><i class="fas fa-undo"></i> Reauditar</button>
+            <button class="btn btn-danger" @click="abrirEliminarTodo('cl')"><i class="fas fa-trash-alt"></i> Eliminar Todo</button>
+        </div>
+
+        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; align-items:center; background:#f8faff; padding:8px 18px; border-radius:12px; border:1px solid #e2e8f0;">
+            <span style="font-weight:600; font-size:0.75rem; color:#475569;"><i class="fas fa-users" style="color:#2563eb;"></i> Auditores</span>
+            <div class="file-input-wrapper">
+                <button class="btn btn-file btn-sm"><i class="fas fa-file-import"></i> Importar Auditores</button>
+                <input type="file" accept=".xlsx,.xls" @change="clImportarAuditores($event)">
+            </div>
+            <div class="file-input-wrapper">
+                <button class="btn btn-success btn-sm"><i class="fas fa-database"></i> Importar BD</button>
+                <input type="file" accept=".xlsx,.xls" @change="clImportarBD($event)">
+            </div>
+            <div class="input-group" style="flex:1; min-width:180px;">
+                <input type="text" v-model="clNuevoAuditorNombre" placeholder="Nombre y Apellido" style="flex:1;" @keyup.enter="clAgregarAuditor">
+                <button class="btn btn-primary btn-sm" @click="clAgregarAuditor"><i class="fas fa-plus"></i></button>
+            </div>
+            <span class="badge badge-primary">Total: {{ clAuditores.length }}</span>
+            <button class="btn btn-info btn-sm" @click="mostrarListadoAuditores('cl')"><i class="fas fa-eye"></i> Ver</button>
+        </div>
+
+        <div class="table-wrapper" v-if="clFilasFiltradas.length > 0">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:30px;">
+                            <div class="seleccion-todos"><input type="checkbox" v-model="clSeleccionarTodos" @change="clToggleTodos"></div>
+                        </th>
+                        <th class="col-deposito">DEPÓSITO</th>
+                        <th class="col-sector">SECTOR</th>
+                        <th class="col-fecha">Ultimo Inventario</th>
+                        <th>Días</th>
+                        <th style="min-width:90px;">Hora Convocatoria</th>
+                        <th style="min-width:90px;">Hora Salida</th>
+                        <th style="min-width:150px;">AUDITORES</th>
+                        <th style="min-width:130px;">Supervisor(es)</th>
+                        <th class="col-estado-cl">ESTADO</th>
+                        <th class="col-motivo-cl">MOTIVO</th>
+                        <th class="col-acciones">✕</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(fila, index) in clFilasFiltradas" :key="fila._uid">
+                        <td><input type="checkbox" class="checkbox-punto" v-model="fila.seleccionado"></td>
+                        <td><input class="input-sm" :class="{ 'no-edit': clBloqueado }" v-model="fila.DEPOSITO" :disabled="clBloqueado" placeholder="Depósito" style="min-width:90px;"></td>
+                        <td><input class="input-sm" :class="{ 'no-edit': clBloqueado }" v-model="fila.SECTOR" :disabled="clBloqueado" placeholder="Sector" style="min-width:90px;"></td>
+                        <td><input class="input-date" type="date" v-model="fila.Ultimo_Inventario" @change="clCalcularDias(index)" style="min-width:120px;"></td>
+                        <td><span class="dias-cell" :class="fila.colorClase">{{ fila.dias !== null ? fila.dias : '-' }}</span></td>
+                        <td><input class="input-sm" type="time" v-model="fila.horaConvocatoria" style="min-width:80px;"></td>
+                        <td><input class="input-sm" type="time" v-model="fila.horaSalida" style="min-width:80px;"></td>
+                        <td>
+                            <div class="personas-container">
+                                <span class="tag-persona" v-for="p in fila.personasSeleccionadas" :key="p">
+                                    {{ obtenerNombreApellido(p) }}
+                                    <label style="margin-left:6px; display:inline-flex; align-items:center; cursor:pointer;" title="Marcar para asignar herramienta WiFi">
+                                        <input type="checkbox" :checked="fila.auditoresWifi && fila.auditoresWifi.includes(p)" @change="toggleWifi(fila, p)" style="margin-right:3px; cursor:pointer; accent-color:#10b981; width:12px; height:12px;">
+                                        <i class="fas fa-wifi" :style="{ color: (fila.auditoresWifi && fila.auditoresWifi.includes(p)) ? '#10b981' : '#94a3b8' }"></i>
+                                    </label>
+                                </span>
+                                <selector-auditor :opciones="clAuditoresDisponibles(fila)" @seleccionar="clAgregarPersona(index, $event)"></selector-auditor>
+                                <button class="btn btn-outline btn-sm" style="padding:0 6px; font-size:0.55rem;" @click="clQuitarPersona(index)" :disabled="fila.personasSeleccionadas.length === 0" title="Quitar último auditor"><i class="fas fa-times"></i></button>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="personas-container">
+                                <span class="tag-supervisor" v-for="s in fila.supervisoresSeleccionados" :key="s">
+                                    ⭐ {{ obtenerNombreApellido(s) }}
+                                    <label style="margin-left:6px; margin-right:4px; display:inline-flex; align-items:center; cursor:pointer;" title="Marcar para asignar herramienta WiFi">
+                                        <input type="checkbox" :checked="fila.auditoresWifi && fila.auditoresWifi.includes(s)" @change="toggleWifi(fila, s)" style="margin-right:3px; cursor:pointer; accent-color:#10b981; width:12px; height:12px;">
+                                        <i class="fas fa-wifi" :style="{ color: (fila.auditoresWifi && fila.auditoresWifi.includes(s)) ? '#10b981' : '#94a3b8' }"></i>
+                                    </label>
+                                    <button class="tag-quitar" @click="clQuitarSupervisor(index, s)" title="Quitar supervisor">×</button>
+                                </span>
+                                <select class="select-sm" v-model="fila.supervisorTemp" @change="clAgregarSupervisor(index)" v-if="clSupervisoresDisponibles(fila).length > 0">
+                                    <option value="">+ Agregar</option>
+                                    <option v-for="p in clSupervisoresDisponibles(fila)" :key="p" :value="p">{{ obtenerNombreApellido(p) }}</option>
+                                </select>
+                            </div>
+                        </td>
+                        <td>
+                            <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
+                                <select class="select-estado" :class="'tag-' + fila.estado" v-model="fila.estado" @change="clCambiarEstado(index)" title="Cambiar estado manualmente">
+                                    <option value="pendiente">⏳ Pendiente</option>
+                                    <option value="agendado">📅 Agendado</option>
+                                    <option value="generado">📋 Generado</option>
+                                    <option value="auditado">✅ Auditado</option>
+                                    <option value="reauditado">🔄 Reauditado</option>
+                                </select>
+                                <i v-if="fila.esReauditoria" class="fas fa-redo-alt" style="color:#dc2626; font-size:0.7rem;" title="Este registro es una reauditoría"></i>
+                                <i v-if="fila.tieneReauditoria" class="fas fa-link" style="color:#7c3aed; font-size:0.7rem;" title="Este registro generó una reauditoría posterior"></i>
+                            </div>
+                        </td>
+                        <td style="font-size:0.56rem; color:#64748b; max-width:100px; word-break:break-word;">{{ fila.motivoReauditoria || '-' }}</td>
+                        <td><button class="btn-eliminar-fila" @click="clEliminarFila(index)"><i class="fas fa-trash-alt"></i></button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div v-else style="text-align:center; padding:40px; color:#94a3b8;">
+            <i class="fas fa-inbox" style="font-size:2.2rem; display:block; margin-bottom:10px;"></i>
+            No hay depósitos que coincidan con los filtros actuales.
+        </div>
+        
+        <div class="footer-actions">
+            <div class="grupo-info">
+                <i class="fas fa-warehouse" style="color:#7c3aed;"></i> <strong>CL:</strong> <span>{{ clFilas.length }}</span>
+                <span class="stats-badge badge-primary">✓ Sel: {{ clSeleccionados }}</span>
+                <div class="estado-stats">
+                    <span class="stat-item"><span class="num" style="color:#92400e;">{{ clPendientes }}</span> ⏳</span>
+                    <span class="stat-item"><span class="num" style="color:#1e40af;">{{ clAgendados }}</span> 📅</span>
+                    <span class="stat-item"><span class="num" style="color:#5b21b6;">{{ clGenerados }}</span> 📋</span>
+                    <span class="stat-item"><span class="num" style="color:#166534;">{{ clAuditados }}</span> ✅</span>
+                    <span class="stat-item"><span class="num" style="color:#991b1b;">{{ clReauditados }}</span> 🔄</span>
+                </div>
+            </div>
+            <div class="flex-row">
+                <span class="badge badge-verde"><i class="fas fa-square"></i> &lt;150</span>
+                <span class="badge badge-amarillo"><i class="fas fa-square"></i> 150-170</span>
+                <span class="badge badge-naranja"><i class="fas fa-square"></i> 170-175</span>
+                <span class="badge badge-rojo"><i class="fas fa-square"></i> 175-180</span>
+                <span class="badge badge-rojo-fuerte"><i class="fas fa-square"></i> &gt;180</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal-overlay" v-if="mostrarAuditoresModal" @click.self="mostrarAuditoresModal = false">
+        <div class="modal-content">
+            <button class="close-modal" @click="mostrarAuditoresModal = false">&times;</button>
+            <h2><i class="fas fa-users" style="color:#2563eb;"></i> Listado de Auditores - {{ auditoresModalTitulo }}</h2>
+            <div style="margin-bottom:12px;"><input type="text" class="search-auditor" v-model="auditoresModalBusqueda" placeholder="🔍 Buscar auditor..."></div>
+            <div style="margin-bottom:10px; display:flex; gap:8px; flex-wrap:wrap;"><span class="badge badge-primary">Total: {{ auditoresModalLista.length }}</span></div>
+            <div v-if="auditoresModalListaFiltrada.length === 0" style="text-align:center; padding:30px; color:#94a3b8;"><i class="fas fa-users" style="font-size:2rem; display:block; margin-bottom:10px;"></i> No hay auditores registrados</div>
+            <div v-else>
+                <div class="auditor-item" v-for="auditor in auditoresModalListaFiltrada" :key="auditor"><div class="nombre">{{ auditor }}</div></div>
+            </div>
+            <button class="btn btn-outline" style="margin-top:12px;" @click="mostrarAuditoresModal = false">Cerrar</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" v-if="pfMostrarResumen" @click.self="pfMostrarResumen = false">
+        <div class="modal-content">
+            <button class="close-modal" @click="pfMostrarResumen = false">&times;</button>
+            <h2><i class="fas fa-chart-pie" style="color:#2563eb;"></i> Resumen - Puntos de Ventas</h2>
+            <div class="resumen-params" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
+                <div class="param-item"><div class="valor">{{ pfCantidadPDVsUnicos }}</div><div class="etiqueta">🏬 Cantidad de PDVs</div></div>
+                <div class="param-item"><div class="valor">{{ pfCantidadAuditorias }}</div><div class="etiqueta">📝 Cantidad de auditorías</div></div>
+            </div>
+            <h3 style="margin-top:16px; margin-bottom:8px; font-size:0.9rem; color:#475569;">📊 Por Rango de Días</h3>
+            <div class="resumen-params">
+                <div class="param-item" @click="pfFiltrarPorDias('verde')"><div class="valor"><a href="#">{{ pfResumenDias.verde }}</a></div><div class="etiqueta"><span class="color-indicador" style="background:#bbf7d0;"></span> &lt; 150</div></div>
+                <div class="param-item" @click="pfFiltrarPorDias('amarillo')"><div class="valor"><a href="#">{{ pfResumenDias.amarillo }}</a></div><div class="etiqueta"><span class="color-indicador" style="background:#fde68a;"></span> 150-170</div></div>
+                <div class="param-item" @click="pfFiltrarPorDias('naranja')"><div class="valor"><a href="#">{{ pfResumenDias.naranja }}</a></div><div class="etiqueta"><span class="color-indicador" style="background:#fdba74;"></span> 170-175</div></div>
+                <div class="param-item" @click="pfFiltrarPorDias('rojo')"><div class="valor"><a href="#">{{ pfResumenDias.rojo }}</a></div><div class="etiqueta"><span class="color-indicador" style="background:#fca5a5;"></span> 175-180</div></div>
+                <div class="param-item" @click="pfFiltrarPorDias('rojo-fuerte')"><div class="valor"><a href="#">{{ pfResumenDias.rojoFuerte }}</a></div><div class="etiqueta"><span class="color-indicador" style="background:#ef4444;"></span> &gt; 180</div></div>
+            </div>
+            <button class="btn btn-outline" style="margin-top:12px;" @click="pfMostrarResumen = false">Cerrar</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" v-if="clMostrarResumen" @click.self="clMostrarResumen = false">
+        <div class="modal-content">
+            <button class="close-modal" @click="clMostrarResumen = false">&times;</button>
+            <h2><i class="fas fa-chart-pie" style="color:#7c3aed;"></i> Resumen - Centro Logístico</h2>
+            <div class="resumen-params" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
+                <div class="param-item"><div class="valor">{{ clCantidadPDVsUnicos }}</div><div class="etiqueta">🏭 Cantidad de depósitos</div></div>
+                <div class="param-item"><div class="valor">{{ clCantidadAuditorias }}</div><div class="etiqueta">📝 Cantidad de auditorías</div></div>
+            </div>
+            <h3 style="margin-top:16px; margin-bottom:8px; font-size:0.9rem; color:#475569;">📊 Por Rango de Días</h3>
+            <div class="resumen-params">
+                <div class="param-item" @click="clFiltrarPorDias('verde')"><div class="valor"><a href="#">{{ clResumenDias.verde }}</a></div><div class="etiqueta"><span class="color-indicador" style="background:#bbf7d0;"></span> &lt; 150</div></div>
+                <div class="param-item" @click="clFiltrarPorDias('amarillo')"><div class="valor"><a href="#">{{ clResumenDias.amarillo }}</a></div><div class="etiqueta"><span class="color-indicador" style="background:#fde68a;"></span> 150-170</div></div>
+                <div class="param-item" @click="clFiltrarPorDias('naranja')"><div class="valor"><a href="#">{{ clResumenDias.naranja }}</a></div><div class="etiqueta"><span class="color-indicador" style="background:#fdba74;"></span> 170-175</div></div>
+                <div class="param-item" @click="clFiltrarPorDias('rojo')"><div class="valor"><a href="#">{{ clResumenDias.rojo }}</a></div><div class="etiqueta"><span class="color-indicador" style="background:#fca5a5;"></span> 175-180</div></div>
+                <div class="param-item" @click="clFiltrarPorDias('rojo-fuerte')"><div class="valor"><a href="#">{{ clResumenDias.rojoFuerte }}</a></div><div class="etiqueta"><span class="color-indicador" style="background:#ef4444;"></span> &gt; 180</div></div>
+            </div>
+            <button class="btn btn-outline" style="margin-top:12px;" @click="clMostrarResumen = false">Cerrar</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" v-if="rutaMostrar" @click.self="rutaMostrar = false">
+        <div class="modal-content">
+            <button class="close-modal" @click="rutaMostrar = false">&times;</button>
+            <h2><i class="fas fa-route" style="color:#ec4899;"></i> Ruta Optimizada - {{ rutaTitulo }}</h2>
+            <p style="color:#64748b; margin-bottom:12px;">Puntos agendados: <strong>{{ rutaPuntos.length }}</strong></p>
+            <div v-if="rutaPuntos.length === 0" style="text-align:center; padding:30px; color:#64748b;"><i class="fas fa-info-circle" style="font-size:2.5rem; color:#94a3b8;"></i><p style="margin-top:10px;">No hay puntos agendados.</p></div>
+            <div v-else>
+                <div class="ruta-item" v-for="(item, idx) in rutaPuntos" :key="idx">
+                    <span class="orden">{{ idx + 1 }}</span>
+                    <div class="info">
+                        <strong>{{ item.DEPOSITO || item.NRO_SUCURSAL || 'S/N' }}</strong>
+                        <span v-if="item.SECTOR"> - {{ item.SECTOR }}</span>
+                        <span v-else-if="item.ESTR_DESCRIPCION"> - {{ item.ESTR_DESCRIPCION }}</span>
+                        <span v-if="item.horaConvocatoria || item.horaSalida" style="color:#d97706; font-weight:600;"> (Conv: {{ item.horaConvocatoria || '-' }} | Salida: {{ item.horaSalida || '-' }})</span>
+                        <div style="font-size:0.6rem; color:#64748b;">Sup: {{ item.supervisoresSeleccionados && item.supervisoresSeleccionados.length ? item.supervisoresSeleccionados.map(obtenerNombreApellido).join(', ') : 'N/A' }}</div>
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-outline" style="margin-top:12px;" @click="rutaMostrar = false">Cerrar</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" v-if="reauditarMostrar" @click.self="reauditarMostrar = false">
+        <div class="modal-content">
+            <button class="close-modal" @click="reauditarMostrar = false">&times;</button>
+            <h2><i class="fas fa-undo" style="color:#ef4444;"></i> Reauditar</h2>
+            <p style="color:#64748b; margin-bottom:12px;">Selecciona el motivo de la reauditoría:</p>
+            <div style="margin:8px 0;">
+                <div class="motivo-item" v-for="motivo in motivosReauditoria" :key="motivo.valor" :class="{ seleccionado: reauditarMotivo === motivo.valor }" @click="reauditarMotivo = motivo.valor">
+                    <i :class="motivo.icono"></i>
+                    <div>
+                        <div class="motivo-texto">{{ motivo.texto }}</div>
+                        <div class="motivo-desc">{{ motivo.descripcion }}</div>
+                    </div>
+                    <i v-if="reauditarMotivo === motivo.valor" class="fas fa-check-circle" style="color:#2563eb; font-size:1.2rem;"></i>
+                </div>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
+                <button class="btn btn-reauditar" @click="reauditarConfirmar" :disabled="!reauditarMotivo"><i class="fas fa-check"></i> Confirmar</button>
+                <button class="btn btn-outline" @click="reauditarMostrar = false">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" v-if="eliminarMostrar" @click.self="eliminarMostrar = false">
+        <div class="modal-content modal-eliminar">
+            <button class="close-modal" @click="eliminarMostrar = false">&times;</button>
+            <div class="icono-peligro"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="mensaje-peligro">⚠️ ¡ADVERTENCIA!</div>
+            <div class="mensaje-sub">
+                Esta acción eliminará <strong>TODOS</strong> los datos de <strong>{{ eliminarModulo === 'pf' ? 'Puntos de Ventas' : 'Centro Logístico' }}</strong>.
+                <p style="color:#991b1b; font-weight:600; margin-top:10px;">Esta operación no se puede deshacer.</p>
+            </div>
+            <div style="margin:16px 0;">
+                <label style="font-weight:600; font-size:0.9rem; display:block; margin-bottom:6px;">Escribe ELIMINAR para confirmar:</label>
+                <input type="text" class="password-input" v-model="eliminarPassword" placeholder="ELIMINAR" @keyup.enter="confirmarEliminarTodo" autocomplete="off">
+            </div>
+            <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+                <button class="btn btn-danger" @click="confirmarEliminarTodo" :disabled="eliminarPassword.trim().toUpperCase() !== 'ELIMINAR'"><i class="fas fa-trash-alt"></i> Eliminar Todo</button>
+                <button class="btn btn-outline" @click="eliminarMostrar = false">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" v-if="generadoMostrar" @click.self="generadoMostrar = false">
+        <div class="modal-content">
+            <button class="close-modal" @click="generadoMostrar = false">&times;</button>
+            <h2><i class="fas fa-calendar-check" style="color:#2563eb;"></i> Cronograma Generado</h2>
+            <div style="margin-bottom:12px; display:flex; gap:10px; flex-wrap:wrap;">
+                <span class="badge badge-primary">{{ generadoModulo }}</span>
+                <span class="badge badge-success">Puntos: {{ generadoCantidad }}</span>
+                <span class="badge badge-warning">{{ generadoFecha }}</span>
+            </div>
+            <div class="cronograma-output" v-html="generadoTextoHtml"></div>
+            <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+                <button class="btn btn-primary" @click="generadoCopiar"><i class="fas fa-copy"></i> Copiar</button>
+                <button class="btn whatsapp-share" @click="generadoCompartir"><i class="fab fa-whatsapp"></i> Compartir por WhatsApp</button>
+                <button class="btn btn-success" @click="generadoMarcarAuditado"><i class="fas fa-check-double"></i> Marcar como Auditado</button>
+                <button class="btn btn-outline" @click="generadoMostrar = false">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals de Notificaciones y Bitácora -->
+    <div class="modal-overlay" v-if="mostrarNotificacionesModal" @click.self="mostrarNotificacionesModal = false">
+        <div class="modal-content">
+            <button class="close-modal" @click="mostrarNotificacionesModal = false">&times;</button>
+            <h2><i class="fas fa-bell" style="color:#2563eb;"></i> Historial de Notificaciones</h2>
+            <div style="max-height:60vh; overflow-y:auto;">
+                <div class="notif-item" v-for="n in historialNotificaciones" :key="n.id">
+                    <div class="notif-icono" :class="n.tipo"><i :class="toastIcono(n.tipo)"></i></div>
+                    <div style="flex:1;">
+                        <div>{{ n.mensaje }}</div><div class="notif-fecha">{{ formatearFechaHora(n.fecha) }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal-overlay" v-if="mostrarBitacoraModal" @click.self="mostrarBitacoraModal = false">
+        <div class="modal-content">
+            <button class="close-modal" @click="mostrarBitacoraModal = false">&times;</button>
+            <h2><i class="fas fa-book" style="color:#2563eb;"></i> Bitácora de Auditoría</h2>
+            <div style="max-height:55vh; overflow-y:auto;">
+                <div class="bitacora-item" v-for="b in bitacoraFiltrada" :key="b.id">
+                    <div class="bitacora-top"><span class="bitacora-modulo" :class="b.modulo.toLowerCase()">{{ b.modulo }}</span><span class="bitacora-accion">{{ b.accion }}</span><span class="bitacora-fecha">{{ formatearFechaHora(b.fecha) }}</span></div>
+                    <div class="bitacora-detalle">{{ b.detalle }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@2.7.14/dist/vue.js"></script>
+<script>
+    (function() {
+        let _uidCounter = 1;
+        function nextUid() { return _uidCounter++; }
+        function ajustarContadorUid(valor) { if (typeof valor === 'number' && valor >= _uidCounter) _uidCounter = valor + 1; }
+
+        const STORAGE_KEY = 'cronograma_inventarios_pf_v1';
+
+        // ==================== CONFIGURACIÓN DE GOOGLE DRIVE ====================
+        // 1) Creá un Client ID en Google Cloud Console (ver guía) y pegalo abajo.
+        // 2) Todo el equipo que use la app debe estar agregado como "Usuario de prueba"
+        //    en la pantalla de consentimiento OAuth (mientras la app esté en modo Testing).
+        const DRIVE_CONFIG = {
+            CLIENT_ID: 'PON_AQUI_TU_CLIENT_ID.apps.googleusercontent.com',
+            SCOPES: 'https://www.googleapis.com/auth/drive',
+            FILE_NAME: 'cronograma_inventarios_pf_data.json',
+            POLL_INTERVAL_MS: 25000
+        };
+        const DRIVE_API = 'https://www.googleapis.com/drive/v3';
+        const DRIVE_UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
+
+        function storageDisponible() {
+            try { const test = '__test__'; window.localStorage.setItem(test, '1'); window.localStorage.removeItem(test); return true; } catch (e) { return false; }
+        }
+        function cargarEstadoStorage() {
+            try { const raw = window.localStorage.getItem(STORAGE_KEY); if (!raw) return null; return JSON.parse(raw); } catch (e) { return null; }
+        }
+        function guardarEstadoStorage(payload) {
+            try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload)); return true; } catch (e) { return false; }
+        }
+        function debounce(fn, esperaMs) {
+            let temporizador = null;
+            return function(...args) { clearTimeout(temporizador); temporizador = setTimeout(() => fn.apply(this, args), esperaMs); };
+        }
+        function formatearFechaHora(fechaIso) {
+            if (!fechaIso) return ''; const f = new Date(fechaIso); if (isNaN(f.getTime())) return '';
+            return f.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + f.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+
+        const motivosReauditoria = [
+            { valor: 'PLAN', texto: 'PLAN', descripcion: 'Reauditoría programada según plan de trabajo', icono: 'fas fa-calendar-check' },
+            { valor: 'MUDANZA', texto: 'MUDANZA', descripcion: 'Cambio de ubicación del PDV', icono: 'fas fa-truck' },
+            { valor: 'CAMBIO_ENCARGADO', texto: 'CAMBIO DE ENCARGADO', descripcion: 'Cambio de responsable del PDV', icono: 'fas fa-user-tie' },
+            { valor: 'FRAUDE', texto: 'FRAUDE', descripcion: 'Sospecha de irregularidades', icono: 'fas fa-gavel' }
+        ];
+
+        const ESTADO_TEXTOS = { pendiente: '⏳ Pendiente', agendado: '📅 Agendado', generado: '📋 Generado', auditado: '✅ Auditado', reauditado: '🔄 Reauditado' };
+
+        function obtenerNombreApellido(nombreCompleto) {
+            if (!nombreCompleto) return '';
+            let nombre = String(nombreCompleto).replace(/\s*\([^)]*\)\s*/g, '');
+            return nombre.split(' - ')[0].trim();
+        }
+
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+        }
+
+        function convertirFecha(fechaStr) {
+            if (!fechaStr) return null;
+            if (typeof fechaStr === 'number') {
+                const fecha = new Date((fechaStr - 25569) * 86400 * 1000);
+                if (!isNaN(fecha.getTime())) return fecha.toISOString().split('T')[0];
+                return null;
+            }
+            if (/^\d{4}-\d{2}-\d{2}$/.test(fechaStr)) return fechaStr;
+            let match = fechaStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/) || fechaStr.match(/^(\d{1,2})-(\d{1,2})-(\d{2,4})$/) || fechaStr.match(/^(\d{1,2})\.(\d{1,2})\.(\d{2,4})$/);
+            if (match) {
+                let dia = parseInt(match[1]), mes = parseInt(match[2]) - 1, anio = parseInt(match[3]);
+                if (anio < 100) anio += 2000;
+                const fecha = new Date(anio, mes, dia);
+                if (!isNaN(fecha.getTime())) return fecha.toISOString().split('T')[0];
+            }
+            const fecha = new Date(fechaStr);
+            if (!isNaN(fecha.getTime())) return fecha.toISOString().split('T')[0];
+            return null;
+        }
+
+        function calcularDiasDesde(fechaStr) {
+            if (!fechaStr) return null;
+            const fechaConvertida = convertirFecha(fechaStr);
+            if (!fechaConvertida) return null;
+            const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+            const fecha = new Date(fechaConvertida); if (isNaN(fecha.getTime())) return null; fecha.setHours(0, 0, 0, 0);
+            return Math.floor((hoy - fecha) / (1000 * 60 * 60 * 24));
+        }
+
+        function getColorClase(dias) {
+            if (dias === null || dias === undefined) return '';
+            if (dias < 150) return 'celda-verde'; if (dias >= 150 && dias < 170) return 'celda-amarillo';
+            if (dias >= 170 && dias < 175) return 'celda-naranja'; if (dias >= 175 && dias <= 180) return 'celda-rojo';
+            if (dias > 180) return 'celda-rojo-fuerte'; return '';
+        }
+
+        function getFechaManana() { const hoy = new Date(); const manana = new Date(hoy); manana.setDate(manana.getDate() + 1); return manana; }
+        function formatearFecha(fecha) { return fecha.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); }
+        function esMesActual(fechaStr) {
+            if (!fechaStr) return false; const fechaConvertida = convertirFecha(fechaStr); if (!fechaConvertida) return false;
+            const fecha = new Date(fechaConvertida); if (isNaN(fecha.getTime())) return false; const hoy = new Date();
+            return fecha.getMonth() === hoy.getMonth() && fecha.getFullYear() === hoy.getFullYear();
+        }
+
+        function normalizarClave(nombreCompleto) { return String(nombreCompleto || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+
+        const defaultPersonasPF = ['Derlis Velázquez', 'Marcelo Fernández', 'Matías Riveros', 'Juan Solís', 'Carlos Arrua', 'Osmar Nuñez', 'Fernando Franco', 'Enrique Coronel', 'Ulises Gómez', 'Matías Doldán', 'Rubén Britez', 'Alejandro Pérez', 'Alejandro Rolon', 'Fernando Delgadillo', 'Santiago Villalba', 'Jose Alegre', 'Alcides Camacho', 'Hefer Giménez', 'Guillermo Cabrera'];
+        const defaultPersonasCL = ['José González', 'Richard Franco', 'Neri González', 'Alex da Rosa', 'Derlis Sanabria', 'Juan Brítez', 'Javier Sosa', 'Marcelo Dávalos', 'Pablo Martínez', 'Marcelo Zayas', 'Hugo Olmedo', 'Juan Cáceres'];
+
+        const sampleDataPF = [
+            { NRO_SUCURSAL: '222', ESTR_COD: 'E01', ESTR_DESCRIPCION: 'Avda República Argentina', UBIC_TIPO: 'Física', UBIC_ABREVIATURA: 'ARG', AÑO_APER: '2024', Ultimo_Inventario: '2026-01-15', CLUS_DESCRIPCION: 'Cluster A', CANT_GONDOLAS: '12', ESTR_GRUPOS: 'G1', ENCAR_FCH_NACI: '1985-03-10', ANTIGUEDAD_ENCAR: '8', ESTR_DESCRI: 'Centro', NOMBRE_ENCARGADO: 'Silvio Gómez', NOMBRE_SUPERVISOR: 'Silvio Gómez', NOMBRE_ADMINITRATIVO: 'Ana Torres', personasSeleccionadas: ['Derlis Velázquez', 'Marcelo Fernández'], auditoresWifi: [], seleccionado: true, estado: 'pendiente', motivoReauditoria: null, supervisoresSeleccionados: ['Derlis Velázquez'], horaConvocatoria: '07:30', horaSalida: '17:30' },
+        ];
+
+        const sampleDataCL = [
+            { DEPOSITO: 'CL001', SECTOR: 'Norte', Ultimo_Inventario: '2026-01-20', personasSeleccionadas: ['José González', 'Richard Franco'], auditoresWifi: [], seleccionado: true, estado: 'pendiente', motivoReauditoria: null, supervisoresSeleccionados: ['José González'], horaConvocatoria: '07:30', horaSalida: '17:30' },
+        ];
+
+        Vue.directive('click-outside', {
+            bind(el, binding) {
+                el.__clickOutsideHandler__ = function(event) { if (!(el === event.target || el.contains(event.target))) { binding.value(event); } };
+                document.addEventListener('click', el.__clickOutsideHandler__, true);
+            },
+            unbind(el) { document.removeEventListener('click', el.__clickOutsideHandler__, true); }
+        });
+
+        Vue.component('selector-auditor', {
+            props: { opciones: { type: Array, default: () => [] } },
+            data() { return { abierto: false, busqueda: '', indiceActivo: -1, estiloPanel: {} }; },
+            computed: { filtradas() { const q = this.busqueda.trim().toLowerCase(); if (!q) return this.opciones; return this.opciones.filter(o => o.toLowerCase().includes(q)); } },
+            methods: {
+                abrir() {
+                    if (this.opciones.length === 0) return;
+                    this.abierto = true; this.busqueda = ''; this.indiceActivo = -1;
+                    this.$nextTick(() => { this.posicionar(); if (this.$refs.input) this.$refs.input.focus(); });
+                    window.addEventListener('scroll', this.posicionar, true); window.addEventListener('resize', this.posicionar);
+                },
+                cerrar() { this.abierto = false; window.removeEventListener('scroll', this.posicionar, true); window.removeEventListener('resize', this.posicionar); },
+                posicionar() {
+                    if (!this.$refs.btn) return; const rect = this.$refs.btn.getBoundingClientRect(); const anchoPanel = 230;
+                    let left = rect.left; if (left + anchoPanel > window.innerWidth - 10) left = Math.max(window.innerWidth - anchoPanel - 10, 10);
+                    let top = rect.bottom + 4; const altoPanel = 235; if (top + altoPanel > window.innerHeight - 10) top = Math.max(rect.top - altoPanel - 4, 10);
+                    this.estiloPanel = { position: 'fixed', top: top + 'px', left: left + 'px', width: anchoPanel + 'px' };
+                },
+                seleccionar(nombre) { this.$emit('seleccionar', nombre); this.cerrar(); },
+                mover(delta) { if (!this.abierto) { this.abrir(); return; } const max = this.filtradas.length - 1; this.indiceActivo = Math.min(Math.max(this.indiceActivo + delta, 0), max); },
+                confirmarActivo() { if (this.indiceActivo >= 0 && this.filtradas[this.indiceActivo]) { this.seleccionar(this.filtradas[this.indiceActivo]); } else if (this.filtradas.length === 1) { this.seleccionar(this.filtradas[0]); } }
+            },
+            beforeDestroy() { window.removeEventListener('scroll', this.posicionar, true); window.removeEventListener('resize', this.posicionar); },
+            template:
+                '<div class="selector-auditor" v-click-outside="cerrar">' +
+                    '<button type="button" ref="btn" class="selector-auditor-btn" @click="abrir" :disabled="opciones.length === 0"><i class="fas fa-search"></i> {{ opciones.length === 0 ? "Sin disponibles" : "+ Agregar" }}</button>' +
+                    '<div class="selector-auditor-panel" v-if="abierto" :style="estiloPanel">' +
+                        '<input ref="input" type="text" v-model="busqueda" placeholder="Buscar auditor..." class="selector-auditor-input" @keydown.down.prevent="mover(1)" @keydown.up.prevent="mover(-1)" @keydown.enter.prevent="confirmarActivo" @keydown.esc="cerrar">' +
+                        '<div class="selector-auditor-lista">' +
+                            '<div v-if="filtradas.length === 0" class="selector-auditor-vacio">Sin resultados</div>' +
+                            '<div v-for="(op, i) in filtradas" :key="op" class="selector-auditor-item" :class="{ activo: i === indiceActivo }" @click="seleccionar(op)" @mouseenter="indiceActivo = i"><i class="fas fa-user" style="color:#94a3b8; font-size:0.65rem;"></i> {{ op }}</div>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>'
+        });
+
+        new Vue({
+            el: '#app',
+            data: {
+                tabActivo: 'pf',
+                fechaActual: new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+                toasts: [], _toastId: 1, _toastTimers: {}, historialNotificaciones: [], mostrarNotificacionesModal: false,
+                bitacora: [], _bitacoraId: 1, mostrarBitacoraModal: false, bitacoraFiltroModulo: '', bitacoraBusqueda: '',
+                guardando: false, _avisoAlmacenamientoMostrado: false,
+                ultimoMensajePF: null, ultimoMensajeCL: null,
+                pfFilas: sampleDataPF.map(f => {
+                    const dias = calcularDiasDesde(f.Ultimo_Inventario);
+                    return { ...f, _uid: nextUid(), personaTemp: '', supervisorTemp: '', dias: dias, colorClase: getColorClase(dias), auditoresWifi: f.auditoresWifi || [], supervisoresSeleccionados: Array.isArray(f.supervisoresSeleccionados) ? f.supervisoresSeleccionados : [], horaConvocatoria: f.horaConvocatoria || '07:30', horaSalida: f.horaSalida || '17:30', esReauditoria: false, tieneReauditoria: false, origenUid: null, reauditoriaUid: null };
+                }),
+                pfAuditores: [...defaultPersonasPF], pfBuscar: '', pfGrupo: '', pfFiltroDias: '', pfSeleccionarTodos: true, pfNuevoAuditorNombre: '', pfMostrarResumen: false, pfBloqueado: false,
+                clFilas: sampleDataCL.map(f => {
+                    const dias = calcularDiasDesde(f.Ultimo_Inventario);
+                    return { ...f, _uid: nextUid(), personaTemp: '', supervisorTemp: '', dias: dias, colorClase: getColorClase(dias), auditoresWifi: f.auditoresWifi || [], supervisoresSeleccionados: Array.isArray(f.supervisoresSeleccionados) ? f.supervisoresSeleccionados : [], horaConvocatoria: f.horaConvocatoria || '07:30', horaSalida: f.horaSalida || '17:30', esReauditoria: false, tieneReauditoria: false, origenUid: null, reauditoriaUid: null };
+                }),
+                clAuditores: [...defaultPersonasCL], clBuscar: '', clSector: '', clFiltroDias: '', clSeleccionarTodos: true, clNuevoAuditorNombre: '', clMostrarResumen: false, clBloqueado: false,
+                motivosReauditoria: motivosReauditoria, reauditarMostrar: false, reauditarModulo: 'pf', reauditarMotivo: null, rutaMostrar: false, rutaTitulo: '', rutaPuntos: [], rutaTiempo: 0,
+                generadoMostrar: false, generadoModulo: '', generadoCantidad: 0, generadoFecha: '', generadoTexto: '', generadoTextoHtml: '', generadoPuntos: [], generadoVecesCompartido: 0,
+                eliminarMostrar: false, eliminarModulo: 'pf', eliminarPassword: '',
+                mostrarAuditoresModal: false, auditoresModalTitulo: '', auditoresModalLista: [], auditoresModalBusqueda: '',
+                // Estado de Google Drive
+                driveConectado: false, driveConectando: false, driveUsuario: '', driveSincronizando: false,
+                driveUltimaSync: '', driveError: '', driveFileId: null, driveModifiedTimeConocido: null,
+            },
+            computed: {
+                auditoresModalListaFiltrada() { if (!this.auditoresModalBusqueda) return this.auditoresModalLista; const q = this.auditoresModalBusqueda.toLowerCase(); return this.auditoresModalLista.filter(a => obtenerNombreApellido(a).toLowerCase().includes(q)); },
+                obtenerNombreApellido() { return function(nombre) { return obtenerNombreApellido(nombre); }; },
+                pfFilasFiltradas() {
+                    return this.pfFilas.filter(f => {
+                        const coincidePDV = !this.pfBuscar || (f.NRO_SUCURSAL && String(f.NRO_SUCURSAL).toLowerCase().includes(this.pfBuscar.toLowerCase())) || (f.ESTR_DESCRIPCION && f.ESTR_DESCRIPCION.toLowerCase().includes(this.pfBuscar.toLowerCase()));
+                        const coincideGrupo = !this.pfGrupo || (f.ESTR_GRUPOS && f.ESTR_GRUPOS.toLowerCase().includes(this.pfGrupo.toLowerCase()));
+                        const coincideDias = this.filtrarPorDias(f, this.pfFiltroDias);
+                        return coincidePDV && coincideGrupo && coincideDias;
+                    });
+                },
+                pfPendientes() { return this.pfFilas.filter(f => f.estado === 'pendiente').length; }, pfAgendados() { return this.pfFilas.filter(f => f.estado === 'agendado').length; }, pfGenerados() { return this.pfFilas.filter(f => f.estado === 'generado').length; }, pfAuditados() { return this.pfFilas.filter(f => f.estado === 'auditado').length; }, pfReauditados() { return this.pfFilas.filter(f => f.estado === 'reauditado').length; }, pfSeleccionados() { return this.pfFilas.filter(f => f.seleccionado).length; },
+                pfProgreso() { if (this.pfFilas.length === 0) return 0; return Math.round((this.pfAuditados / this.pfFilas.length) * 100); },
+                pfProgresoMes() { const mesActual = this.pfFilas.filter(f => esMesActual(f.Ultimo_Inventario)); if (mesActual.length === 0) return 0; return Math.round((mesActual.filter(f => f.estado === 'auditado').length / mesActual.length) * 100); },
+                pfResumenDias() { const res = { verde: 0, amarillo: 0, naranja: 0, rojo: 0, rojoFuerte: 0 }; this.pfFilas.forEach(f => { if (f.dias === null || f.dias === undefined) return; if (f.dias < 150) res.verde++; else if (f.dias >= 150 && f.dias < 170) res.amarillo++; else if (f.dias >= 170 && f.dias < 175) res.naranja++; else if (f.dias >= 175 && f.dias <= 180) res.rojo++; else if (f.dias > 180) res.rojoFuerte++; }); return res; },
+                pfResumenGrupos() { const grupos = {}; this.pfFilas.forEach(f => { const grupo = f.ESTR_GRUPOS || 'Sin grupo'; grupos[grupo] = (grupos[grupo] || 0) + 1; }); return grupos; },
+                pfCantidadPDVsUnicos() { return new Set(this.pfFilas.map(f => String(f.NRO_SUCURSAL || '').trim()).filter(v => v !== '')).size; },
+                pfCantidadAuditorias() { return this.pfFilas.length; },
+                clFilasFiltradas() {
+                    return this.clFilas.filter(f => {
+                        const coincideDep = !this.clBuscar || (f.DEPOSITO && String(f.DEPOSITO).toLowerCase().includes(this.clBuscar.toLowerCase()));
+                        const coincideSec = !this.clSector || (f.SECTOR && String(f.SECTOR).toLowerCase().includes(this.clSector.toLowerCase()));
+                        return coincideDep && coincideSec && this.filtrarPorDias(f, this.clFiltroDias);
+                    });
+                },
+                clPendientes() { return this.clFilas.filter(f => f.estado === 'pendiente').length; }, clAgendados() { return this.clFilas.filter(f => f.estado === 'agendado').length; }, clGenerados() { return this.clFilas.filter(f => f.estado === 'generado').length; }, clAuditados() { return this.clFilas.filter(f => f.estado === 'auditado').length; }, clReauditados() { return this.clFilas.filter(f => f.estado === 'reauditado').length; }, clSeleccionados() { return this.clFilas.filter(f => f.seleccionado).length; },
+                clProgreso() { if (this.clFilas.length === 0) return 0; return Math.round((this.clAuditados / this.clFilas.length) * 100); },
+                clProgresoMes() { const mesActual = this.clFilas.filter(f => esMesActual(f.Ultimo_Inventario)); if (mesActual.length === 0) return 0; return Math.round((mesActual.filter(f => f.estado === 'auditado').length / mesActual.length) * 100); },
+                clResumenDias() { const res = { verde: 0, amarillo: 0, naranja: 0, rojo: 0, rojoFuerte: 0 }; this.clFilas.forEach(f => { if (f.dias === null || f.dias === undefined) return; if (f.dias < 150) res.verde++; else if (f.dias >= 150 && f.dias < 170) res.amarillo++; else if (f.dias >= 170 && f.dias < 175) res.naranja++; else if (f.dias >= 175 && f.dias <= 180) res.rojo++; else if (f.dias > 180) res.rojoFuerte++; }); return res; },
+                clResumenSectores() { const sectores = {}; this.clFilas.forEach(f => { const sector = f.SECTOR || 'Sin sector'; sectores[sector] = (sectores[sector] || 0) + 1; }); return sectores; },
+                clCantidadPDVsUnicos() { return new Set(this.clFilas.map(f => String(f.DEPOSITO || '').trim()).filter(v => v !== '')).size; },
+                clCantidadAuditorias() { return this.clFilas.length; },
+                bitacoraFiltrada() { const q = this.bitacoraBusqueda.trim().toLowerCase(); return this.bitacora.filter(b => { const coincideModulo = !this.bitacoraFiltroModulo || b.modulo === this.bitacoraFiltroModulo; const coincideTexto = !q || (b.accion && b.accion.toLowerCase().includes(q)) || (b.detalle && b.detalle.toLowerCase().includes(q)); return coincideModulo && coincideTexto; }); },
+            },
+            watch: {
+                pfFilas: { handler() { this.guardarTodo(); }, deep: true }, clFilas: { handler() { this.guardarTodo(); }, deep: true },
+                pfAuditores: { handler() { this.guardarTodo(); }, deep: true }, clAuditores: { handler() { this.guardarTodo(); }, deep: true },
+                pfBloqueado() { this.guardarTodo(); }, clBloqueado() { this.guardarTodo(); }, bitacora: { handler() { this.guardarTodo(); }, deep: true }, historialNotificaciones: { handler() { this.guardarTodo(); }, deep: true },
+            },
+            created() {
+                this.cargarDesdeAlmacenamiento();
+                this.guardarDebounced = debounce(this.guardarEnAlmacenamiento, 450);
+                this.driveGuardarDebounced = debounce(this.driveGuardarDatos, 1500);
+                if (!storageDisponible()) this.notificar('Este navegador no permite guardar datos localmente. Los datos NO se conservarán al refrescar.', 'error');
+                this.driveFileId = localStorage.getItem('drive_file_id') || null;
+                this.$nextTick(() => this.driveInit());
+            },
+            methods: {
+                obtenerNombreApellido(nombre) { return obtenerNombreApellido(nombre); },
+                estadoTexto(estado) { return ESTADO_TEXTOS[estado] || ESTADO_TEXTOS.pendiente; },
+                toastIcono(tipo) { switch (tipo) { case 'success': return 'fas fa-check-circle'; case 'error': return 'fas fa-times-circle'; case 'warning': return 'fas fa-exclamation-triangle'; default: return 'fas fa-info-circle'; } },
+                notificar(mensaje, tipo) {
+                    const id = this._toastId++; const fecha = new Date().toISOString();
+                    this.toasts.push({ id: id, mensaje: mensaje, tipo: tipo || 'info' });
+                    this.historialNotificaciones.unshift({ id: id, mensaje: mensaje, tipo: tipo || 'info', fecha: fecha });
+                    if (this.historialNotificaciones.length > 300) this.historialNotificaciones.length = 300;
+                    this._toastTimers[id] = setTimeout(() => { this.quitarToast(id); }, 1000);
+                },
+                quitarToast(id) { this.toasts = this.toasts.filter(t => t.id !== id); if (this._toastTimers[id]) { clearTimeout(this._toastTimers[id]); delete this._toastTimers[id]; } },
+                notifCerrar(id) { this.quitarToast(id); },
+                limpiarNotificaciones() { if (confirm('¿Vaciar todo el historial de notificaciones?')) { this.historialNotificaciones = []; } },
+                formatearFechaHora(fecha) { return formatearFechaHora(fecha); },
+                registrarBitacora(modulo, accion, detalle) {
+                    this.bitacora.unshift({ id: this._bitacoraId++, fecha: new Date().toISOString(), modulo: modulo, accion: accion, detalle: detalle });
+                    if (this.bitacora.length > 1000) this.bitacora.length = 1000;
+                },
+                limpiarBitacora() { if (confirm('¿Vaciar toda la bitácora de auditoría? Esta acción no se puede deshacer.')) { this.bitacora = []; this.notificar('Bitácora vaciada.', 'info'); } },
+                exportarBitacoraCSV() {
+                    if (this.bitacora.length === 0) { this.notificar('No hay registros en la bitácora para exportar.', 'warning'); return; }
+                    const escaparCsv = (valor) => `"${String(valor === null || valor === undefined ? '' : valor).replace(/"/g, '""')}"`;
+                    let csv = '\uFEFF' + ['Fecha', 'Módulo', 'Acción', 'Detalle'].map(escaparCsv).join(',') + '\n';
+                    this.bitacora.forEach(b => { csv += [formatearFechaHora(b.fecha), b.modulo, b.accion, b.detalle].map(escaparCsv).join(',') + '\n'; });
+                    const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+                    link.download = `bitacora_auditoria_${new Date().toISOString().slice(0, 10)}.csv`; document.body.appendChild(link); link.click(); document.body.removeChild(link);
+                },
+                cargarDesdeAlmacenamiento() {
+                    const data = cargarEstadoStorage(); if (!data) return;
+                    this.aplicarDatosCargados(data);
+                },
+                aplicarDatosCargados(data) {
+                    if (!data) return;
+                    try {
+                        if (Array.isArray(data.pfFilas)) this.pfFilas = data.pfFilas; if (Array.isArray(data.clFilas)) this.clFilas = data.clFilas;
+                        if (Array.isArray(data.pfAuditores)) this.pfAuditores = data.pfAuditores; if (Array.isArray(data.clAuditores)) this.clAuditores = data.clAuditores;
+                        if (typeof data.pfBloqueado === 'boolean') this.pfBloqueado = data.pfBloqueado; if (typeof data.clBloqueado === 'boolean') this.clBloqueado = data.clBloqueado;
+                        if (Array.isArray(data.bitacora)) this.bitacora = data.bitacora; if (Array.isArray(data.historialNotificaciones)) this.historialNotificaciones = data.historialNotificaciones;
+                        if (data.ultimoMensajePF) this.ultimoMensajePF = data.ultimoMensajePF; if (data.ultimoMensajeCL) this.ultimoMensajeCL = data.ultimoMensajeCL;
+                        
+                        [...this.pfFilas, ...this.clFilas].forEach(f => {
+                            if (!f._uid) f._uid = nextUid(); ajustarContadorUid(f._uid);
+                            f.dias = calcularDiasDesde(f.Ultimo_Inventario); f.colorClase = getColorClase(f.dias);
+                            if (!Array.isArray(f.personasSeleccionadas)) f.personasSeleccionadas = [];
+                            if (f.personaTemp === undefined) f.personaTemp = ''; if (f.supervisorTemp === undefined) f.supervisorTemp = '';
+                            if (f.seleccionado === undefined) f.seleccionado = true; if (!f.estado) f.estado = 'pendiente';
+                            if (!f.horaConvocatoria) f.horaConvocatoria = '07:30'; if (!f.horaSalida) f.horaSalida = '17:30';
+                            if (f.esReauditoria === undefined) f.esReauditoria = false; if (f.tieneReauditoria === undefined) f.tieneReauditoria = false;
+                            if (f.origenUid === undefined) f.origenUid = null; if (f.reauditoriaUid === undefined) f.reauditoriaUid = null;
+                            if (!Array.isArray(f.auditoresWifi)) f.auditoresWifi = [];
+                            if (!Array.isArray(f.supervisoresSeleccionados)) {
+                                f.supervisoresSeleccionados = f.supervisorSeleccionado ? [f.supervisorSeleccionado] : []; delete f.supervisorSeleccionado;
+                            }
+                        });
+                        let maxIdBitacora = 0; this.bitacora.forEach(b => { if (b.id > maxIdBitacora) maxIdBitacora = b.id; }); this._bitacoraId = maxIdBitacora + 1;
+                        let maxIdNotif = 0; this.historialNotificaciones.forEach(n => { if (n.id > maxIdNotif) maxIdNotif = n.id; }); this._toastId = maxIdNotif + 1;
+                    } catch (e) { console.error('Error al restaurar datos guardados:', e); }
+                },
+                construirPayload() {
+                    return { version: 1, guardadoEn: new Date().toISOString(), pfFilas: this.pfFilas, clFilas: this.clFilas, pfAuditores: this.pfAuditores, clAuditores: this.clAuditores, pfBloqueado: this.pfBloqueado, clBloqueado: this.clBloqueado, bitacora: this.bitacora, historialNotificaciones: this.historialNotificaciones, ultimoMensajePF: this.ultimoMensajePF, ultimoMensajeCL: this.ultimoMensajeCL };
+                },
+                guardarEnAlmacenamiento() {
+                    this.guardando = true;
+                    const payload = this.construirPayload();
+                    const ok = guardarEstadoStorage(payload);
+                    if (!ok && !this._avisoAlmacenamientoMostrado) { this._avisoAlmacenamientoMostrado = true; this.notificar('No se pudo guardar localmente.', 'error'); }
+                    setTimeout(() => { this.guardando = false; }, 300);
+                },
+                guardarTodo() {
+                    // Siempre guarda una copia local (rápida, offline) y, si hay Drive conectado, sincroniza con el equipo.
+                    this.guardarDebounced();
+                    if (this.driveConectado) this.driveGuardarDebounced();
+                },
+
+                // ==================== GOOGLE DRIVE ====================
+                driveInit() {
+                    if (typeof google === 'undefined' || !google.accounts || DRIVE_CONFIG.CLIENT_ID.indexOf('PON_AQUI') === 0) return;
+                    this._driveTokenClient = google.accounts.oauth2.initTokenClient({
+                        client_id: DRIVE_CONFIG.CLIENT_ID,
+                        scope: DRIVE_CONFIG.SCOPES,
+                        callback: (resp) => this.driveManejarToken(resp)
+                    });
+                    // Intenta reconectar en silencio si el navegador ya tiene sesión/consentimiento previo.
+                    this.driveConectar(false);
+                },
+                driveConectar(forzarConsentimiento) {
+                    if (DRIVE_CONFIG.CLIENT_ID.indexOf('PON_AQUI') === 0) {
+                        this.driveError = 'Falta configurar el CLIENT_ID de Google Drive en el código (buscá DRIVE_CONFIG).';
+                        return;
+                    }
+                    if (!this._driveTokenClient) { this.driveInit(); return; }
+                    this.driveError = ''; this.driveConectando = true;
+                    this._driveTokenClient.requestAccessToken({ prompt: forzarConsentimiento ? 'consent' : '' });
+                },
+                async driveManejarToken(resp) {
+                    this.driveConectando = false;
+                    if (!resp || resp.error) { if (resp && resp.error !== 'immediate_failed_no_prompt') this.driveError = 'No se pudo conectar con Google Drive.'; return; }
+                    this._driveAccessToken = resp.access_token;
+                    this.driveConectado = true;
+                    this.driveError = '';
+                    try {
+                        const userResp = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: this.driveHeaders() });
+                        if (userResp.ok) { const u = await userResp.json(); this.driveUsuario = u.email || ''; }
+                    } catch (e) {}
+                    await this.driveBuscarOCrearArchivo();
+                    this.driveIniciarPolling();
+                },
+                driveHeaders() { return { Authorization: 'Bearer ' + this._driveAccessToken }; },
+                async driveBuscarOCrearArchivo() {
+                    this.driveSincronizando = true;
+                    try {
+                        if (this.driveFileId) {
+                            const check = await fetch(`${DRIVE_API}/files/${this.driveFileId}?fields=id,modifiedTime,trashed`, { headers: this.driveHeaders() });
+                            if (check.ok) { const meta = await check.json(); if (!meta.trashed) { await this.driveCargarDatos(false); this.driveSincronizando = false; return; } }
+                            this.driveFileId = null;
+                        }
+                        const q = encodeURIComponent(`name='${DRIVE_CONFIG.FILE_NAME}' and trashed=false`);
+                        const buscar = await fetch(`${DRIVE_API}/files?q=${q}&fields=files(id,name,modifiedTime)`, { headers: this.driveHeaders() });
+                        const resultado = await buscar.json();
+                        if (resultado.files && resultado.files.length > 0) {
+                            this.driveFileId = resultado.files[0].id;
+                            localStorage.setItem('drive_file_id', this.driveFileId);
+                            await this.driveCargarDatos(false);
+                            this.notificar('Conectado al cronograma compartido del equipo.', 'success');
+                        } else {
+                            const crear = await fetch(`${DRIVE_API}/files`, { method: 'POST', headers: { ...this.driveHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ name: DRIVE_CONFIG.FILE_NAME, mimeType: 'application/json' }) });
+                            const nuevo = await crear.json();
+                            this.driveFileId = nuevo.id;
+                            localStorage.setItem('drive_file_id', this.driveFileId);
+                            await this.driveGuardarDatos();
+                            this.notificar('Se creó "' + DRIVE_CONFIG.FILE_NAME + '" en tu Google Drive. Compartilo (botón derecho → Compartir, con permiso de Editor) con el resto del equipo para que todos vean los mismos datos.', 'success');
+                        }
+                    } catch (e) { this.driveError = 'Error al buscar/crear el archivo en Drive.'; console.error(e); }
+                    this.driveSincronizando = false;
+                },
+                async driveCargarDatos(manual) {
+                    if (!this.driveFileId) return;
+                    this.driveSincronizando = true;
+                    try {
+                        const resp = await fetch(`${DRIVE_API}/files/${this.driveFileId}?alt=media`, { headers: this.driveHeaders() });
+                        if (resp.ok) {
+                            const texto = await resp.text();
+                            if (texto && texto.trim()) { const data = JSON.parse(texto); this.aplicarDatosCargados(data); this.guardarEnAlmacenamiento(); }
+                            const metaResp = await fetch(`${DRIVE_API}/files/${this.driveFileId}?fields=modifiedTime`, { headers: this.driveHeaders() });
+                            if (metaResp.ok) { const meta = await metaResp.json(); this.driveModifiedTimeConocido = meta.modifiedTime; }
+                            this.driveUltimaSync = new Date().toLocaleTimeString('es-ES');
+                            if (manual) this.notificar('Datos actualizados desde Drive.', 'success');
+                        }
+                    } catch (e) { this.driveError = 'No se pudieron traer los datos de Drive.'; console.error(e); }
+                    this.driveSincronizando = false;
+                },
+                async driveGuardarDatos() {
+                    if (!this.driveConectado || !this.driveFileId) return;
+                    this.driveSincronizando = true;
+                    try {
+                        const payload = this.construirPayload();
+                        const resp = await fetch(`${DRIVE_UPLOAD_API}/files/${this.driveFileId}?uploadType=media&fields=modifiedTime`, { method: 'PATCH', headers: { ...this.driveHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                        if (resp.ok) { const meta = await resp.json(); this.driveModifiedTimeConocido = meta.modifiedTime; this.driveUltimaSync = new Date().toLocaleTimeString('es-ES'); this.driveError = ''; }
+                        else { this.driveError = 'No se pudo guardar en Drive (¿perdiste la conexión o el acceso al archivo?).'; }
+                    } catch (e) { this.driveError = 'No se pudo guardar en Drive.'; console.error(e); }
+                    this.driveSincronizando = false;
+                },
+                driveIniciarPolling() {
+                    if (this._drivePollId) clearInterval(this._drivePollId);
+                    this._drivePollId = setInterval(async () => {
+                        if (!this.driveConectado || !this.driveFileId || this.driveSincronizando) return;
+                        try {
+                            const resp = await fetch(`${DRIVE_API}/files/${this.driveFileId}?fields=modifiedTime`, { headers: this.driveHeaders() });
+                            if (resp.ok) {
+                                const meta = await resp.json();
+                                if (this.driveModifiedTimeConocido && meta.modifiedTime !== this.driveModifiedTimeConocido) {
+                                    await this.driveCargarDatos(false);
+                                    this.notificar('Un compañero actualizó el cronograma. Se recargaron los datos.', 'info');
+                                }
+                            }
+                        } catch (e) {}
+                    }, DRIVE_CONFIG.POLL_INTERVAL_MS);
+                },
+                driveDesconectar() {
+                    if (this._drivePollId) clearInterval(this._drivePollId);
+                    if (this._driveAccessToken && typeof google !== 'undefined' && google.accounts) { google.accounts.oauth2.revoke(this._driveAccessToken, () => {}); }
+                    this._driveAccessToken = null; this.driveConectado = false; this.driveUsuario = ''; this.driveUltimaSync = '';
+                    this.notificar('Desconectado de Google Drive. Los cambios ahora solo se guardan en este navegador.', 'warning');
+                },
+                mostrarListadoAuditores(modulo) {
+                    const lista = modulo === 'pf' ? this.pfAuditores : this.clAuditores;
+                    this.auditoresModalTitulo = modulo === 'pf' ? 'Puntos de Ventas' : 'Centro Logístico';
+                    this.auditoresModalLista = [...lista].sort((a, b) => obtenerNombreApellido(a).localeCompare(obtenerNombreApellido(b), 'es'));
+                    this.auditoresModalBusqueda = ''; this.mostrarAuditoresModal = true;
+                },
+                pfAuditoresDisponibles(fila) { return this.pfAuditores.filter(a => !fila.personasSeleccionadas.includes(a)); },
+                clAuditoresDisponibles(fila) { return this.clAuditores.filter(a => !fila.personasSeleccionadas.includes(a)); },
+                filtrarPorDias(fila, filtro) {
+                    if (!filtro) return true; if (fila.dias === null || fila.dias === undefined) return false;
+                    switch (filtro) { case 'verde': return fila.dias < 150; case 'amarillo': return fila.dias >= 150 && fila.dias < 170; case 'naranja': return fila.dias >= 170 && fila.dias < 175; case 'rojo': return fila.dias >= 175 && fila.dias <= 180; case 'rojo-fuerte': return fila.dias > 180; default: return true; }
+                },
+                pfFiltrarPorDias(filtro) { this.pfFiltroDias = filtro; this.pfMostrarResumen = false; }, pfFiltrarPorGrupo(grupo) { this.pfGrupo = grupo === 'Sin grupo' ? '' : grupo; this.pfMostrarResumen = false; },
+                clFiltrarPorDias(filtro) { this.clFiltroDias = filtro; this.clMostrarResumen = false; }, clFiltrarPorSector(sector) { this.clSector = sector === 'Sin sector' ? '' : sector; this.clMostrarResumen = false; },
+                toggleWifi(fila, nombre) {
+                    if (!fila.auditoresWifi) this.$set(fila, 'auditoresWifi', []);
+                    const idx = fila.auditoresWifi.indexOf(nombre);
+                    if (idx !== -1) fila.auditoresWifi.splice(idx, 1); else fila.auditoresWifi.push(nombre);
+                },
+
+                // Métodos PF
+                pfAgregarFila() {
+                    if (this.pfBloqueado) return;
+                    this.pfFilas.push({ _uid: nextUid(), NRO_SUCURSAL: '', ESTR_COD: '', ESTR_DESCRIPCION: '', UBIC_TIPO: '', UBIC_ABREVIATURA: '', AÑO_APER: '', Ultimo_Inventario: '', CLUS_DESCRIPCION: '', CANT_GONDOLAS: '', ESTR_GRUPOS: '', ENCAR_FCH_NACI: '', ANTIGUEDAD_ENCAR: '', ESTR_DESCRI: '', NOMBRE_ENCARGADO: '', NOMBRE_SUPERVISOR: '', NOMBRE_ADMINITRATIVO: '', personasSeleccionadas: [], auditoresWifi: [], personaTemp: '', supervisorTemp: '', horaConvocatoria: '07:30', horaSalida: '17:30', dias: null, colorClase: '', seleccionado: true, estado: 'pendiente', motivoReauditoria: null, supervisoresSeleccionados: [], esReauditoria: false, tieneReauditoria: false, origenUid: null, reauditoriaUid: null });
+                    this.registrarBitacora('PF', 'Alta manual', 'Se agregó un nuevo PDV.');
+                },
+                pfEliminarFila(index) {
+                    if (confirm('¿Estás seguro de eliminar este PDV?')) {
+                        const fila = this.pfFilasFiltradas[index]; const realIndex = this.pfFilas.findIndex(f => f._uid === fila._uid);
+                        if (realIndex !== -1) { this.registrarBitacora('PF', 'Eliminación', `PDV eliminado: ${fila.NRO_SUCURSAL || 'S/N'}.`); this.pfFilas.splice(realIndex, 1); }
+                    }
+                },
+                pfCalcularDias(index) { const fila = this.pfFilasFiltradas[index]; const dias = calcularDiasDesde(fila.Ultimo_Inventario); fila.dias = dias; fila.colorClase = getColorClase(dias); },
+                pfToggleTodos() { this.pfFilasFiltradas.forEach(f => f.seleccionado = this.pfSeleccionarTodos); },
+                pfAgregarPersona(index, nombre) {
+                    const fila = this.pfFilasFiltradas[index]; if (!fila || !nombre) return;
+                    if (!fila.personasSeleccionadas.includes(nombre)) { fila.personasSeleccionadas.push(nombre); if (fila.supervisoresSeleccionados.length === 0) fila.supervisoresSeleccionados.push(nombre); }
+                },
+                pfQuitarPersona(index) {
+                    const fila = this.pfFilasFiltradas[index];
+                    if (fila.personasSeleccionadas.length > 0) {
+                        const removido = fila.personasSeleccionadas.pop();
+                        const idx = fila.supervisoresSeleccionados.indexOf(removido); if (idx !== -1) fila.supervisoresSeleccionados.splice(idx, 1);
+                        const wIdx = fila.auditoresWifi.indexOf(removido); if (wIdx !== -1) fila.auditoresWifi.splice(wIdx, 1);
+                    }
+                },
+                pfAgregarSupervisor(index) {
+                    const fila = this.pfFilasFiltradas[index]; if (!fila) return; const valor = fila.supervisorTemp;
+                    if (valor && fila.personasSeleccionadas.includes(valor) && !fila.supervisoresSeleccionados.includes(valor)) fila.supervisoresSeleccionados.push(valor);
+                    fila.supervisorTemp = '';
+                },
+                pfQuitarSupervisor(index, nombre) { const fila = this.pfFilasFiltradas[index]; if (!fila) return; const idx = fila.supervisoresSeleccionados.indexOf(nombre); if (idx !== -1) fila.supervisoresSeleccionados.splice(idx, 1); },
+                pfSupervisoresDisponibles(fila) { return fila.personasSeleccionadas.filter(p => !fila.supervisoresSeleccionados.includes(p)); },
+                pfCambiarEstado(index) {
+                    const fila = this.pfFilasFiltradas[index]; if (!fila) return;
+                    if (fila.estado === 'pendiente' || fila.estado === 'agendado') fila.motivoReauditoria = null;
+                    this.registrarBitacora('PF', 'Cambio manual de estado', `PDV ${fila.NRO_SUCURSAL || 'S/N'} cambiado a: ${this.estadoTexto(fila.estado)}.`); this.notificar(`Estado actualizado.`, 'info');
+                },
+                pfImportarAuditores(event) {
+                    const file = event.target.files[0]; if (!file) return; const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const workbook = XLSX.read(e.target.result, { type: 'array' }); const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                            if (!jsonData || jsonData.length === 0) return;
+                            const clavesExistentes = new Set(this.pfAuditores.map(normalizarClave)); let importados = 0; let duplicados = 0;
+                            jsonData.forEach(row => {
+                                const nombre = String(row['Nombre y Apellido'] || row['NOMBRE Y APELLIDO'] || row['Nombre'] || '').trim();
+                                if (nombre) { const clave = normalizarClave(nombre); if (!clavesExistentes.has(clave)) { this.pfAuditores.push(nombre); clavesExistentes.add(clave); importados++; } else duplicados++; }
+                            });
+                            this.notificar(`${importados} importados` + (duplicados ? `, ${duplicados} ya existían.` : '.'), 'success');
+                        } catch (error) { this.notificar('Error al leer Excel.', 'error'); }
+                    };
+                    reader.readAsArrayBuffer(file); event.target.value = '';
+                },
+                pfImportarBD(event) {
+                    const file = event.target.files[0]; if (!file) return; const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const workbook = XLSX.read(e.target.result, { type: 'array' }); const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                            let importados = 0;
+                            jsonData.forEach(row => {
+                                let fechaConvertida = row['Ultimo Inventario'] ? convertirFecha(row['Ultimo Inventario']) : '';
+                                const fila = { _uid: nextUid(), NRO_SUCURSAL: row['NRO_SUCURSAL'] || '', ESTR_COD: row['ESTR_COD'] || '', ESTR_DESCRIPCION: row['ESTR_DESCRIPCION'] || row['Columna1'] || '', UBIC_TIPO: row['UBIC_TIPO'] || '', UBIC_ABREVIATURA: row['UBIC_ABREVIATURA'] || '', AÑO_APER: row['AÑO_APER'] || '', Ultimo_Inventario: fechaConvertida, CLUS_DESCRIPCION: row['CLUS_DESCRIPCION'] || '', CANT_GONDOLAS: row['CANT_GONDOLAS'] || '', ESTR_GRUPOS: row['ESTR_GRUPOS'] || '', ENCAR_FCH_NACI: row['ENCAR_FCH_NACI'] || '', ANTIGUEDAD_ENCAR: row['ANTIGUEDAD_ENCAR'] || '', ESTR_DESCRI: row['ESTR_DESCRI'] || '', NOMBRE_ENCARGADO: row['NOMBRE_ENCARGADO'] || '', NOMBRE_SUPERVISOR: row['NOMBRE_SUPERVISOR'] || '', NOMBRE_ADMINITRATIVO: row['NOMBRE_ADMINITRATIVO'] || '', personasSeleccionadas: [], auditoresWifi: [], personaTemp: '', supervisorTemp: '', horaConvocatoria: row['HORA_CONVOCATORIA'] || '07:30', horaSalida: row['HORA_SALIDA'] || '17:30', seleccionado: true, estado: 'pendiente', motivoReauditoria: null, supervisoresSeleccionados: [], esReauditoria: false, tieneReauditoria: false, origenUid: null, reauditoriaUid: null };
+                                fila.dias = calcularDiasDesde(fila.Ultimo_Inventario); fila.colorClase = getColorClase(fila.dias);
+                                this.pfFilas.push(fila); importados++;
+                            });
+                            this.pfBloqueado = true; this.notificar(`${importados} registros importados.`, 'success');
+                        } catch (error) { this.notificar('Error al leer el archivo.', 'error'); }
+                    };
+                    reader.readAsArrayBuffer(file); event.target.value = '';
+                },
+                pfAgregarAuditor() {
+                    const nombre = this.pfNuevoAuditorNombre.trim(); if (!nombre) return;
+                    if (!this.pfAuditores.some(a => normalizarClave(a) === normalizarClave(nombre))) { this.pfAuditores.push(nombre); this.pfNuevoAuditorNombre = ''; this.notificar('Auditor agregado.', 'success'); } else this.notificar('Ya existe.', 'warning');
+                },
+                pfToggleAgendar() {
+                    const pendientes = this.pfFilas.filter(f => f.seleccionado && f.estado === 'pendiente');
+                    if (pendientes.length > 0) {
+                        if (pendientes.some(f => f.personasSeleccionadas.length === 0)) { this.notificar('Existen puntos sin auditores.', 'warning'); return; }
+                        pendientes.forEach(f => f.estado = 'agendado'); this.notificar('Puntos agendados.', 'success');
+                    } else {
+                        const agendados = this.pfFilas.filter(f => f.seleccionado && f.estado === 'agendado');
+                        if (agendados.length > 0) { agendados.forEach(f => f.estado = 'pendiente'); this.notificar('Puntos desagendados.', 'info'); }
+                    }
+                },
+                pfGenerar() {
+                    const agendados = this.pfFilas.filter(f => f.seleccionado && f.estado === 'agendado'); if (agendados.length === 0) return;
+                    agendados.forEach(f => f.estado = 'generado'); const texto = this.generarTexto(agendados, false);
+                    this.mostrarGenerado(texto, 'Puntos de Ventas', agendados.length, agendados);
+                },
+                pfMostrarRuta() { const agendados = this.pfFilas.filter(f => f.estado === 'agendado'); if (agendados.length === 0) return; this.mostrarRuta(agendados, 'Puntos de Ventas'); },
+                pfAbrirReauditar() { if (this.pfFilas.filter(f => f.seleccionado && (f.estado === 'auditado' || f.estado === 'reauditado')).length === 0) return; this.reauditarModulo = 'pf'; this.reauditarMotivo = null; this.reauditarMostrar = true; },
+                pfExportarCSV() { this.exportarCSV('pf'); },
+
+                // Métodos CL
+                clAgregarFila() {
+                    if (this.clBloqueado) return;
+                    this.clFilas.push({ _uid: nextUid(), DEPOSITO: '', SECTOR: '', Ultimo_Inventario: '', personasSeleccionadas: [], auditoresWifi: [], personaTemp: '', supervisorTemp: '', horaConvocatoria: '07:30', horaSalida: '17:30', dias: null, colorClase: '', seleccionado: true, estado: 'pendiente', motivoReauditoria: null, supervisoresSeleccionados: [], esReauditoria: false, tieneReauditoria: false, origenUid: null, reauditoriaUid: null });
+                },
+                clEliminarFila(index) {
+                    if (confirm('¿Estás seguro de eliminar este registro?')) {
+                        const fila = this.clFilasFiltradas[index]; const realIndex = this.clFilas.findIndex(f => f._uid === fila._uid);
+                        if (realIndex !== -1) { this.clFilas.splice(realIndex, 1); }
+                    }
+                },
+                clCalcularDias(index) { const fila = this.clFilasFiltradas[index]; fila.dias = calcularDiasDesde(fila.Ultimo_Inventario); fila.colorClase = getColorClase(fila.dias); },
+                clToggleTodos() { this.clFilasFiltradas.forEach(f => f.seleccionado = this.clSeleccionarTodos); },
+                clAgregarPersona(index, nombre) {
+                    const fila = this.clFilasFiltradas[index]; if (!fila || !nombre) return;
+                    if (!fila.personasSeleccionadas.includes(nombre)) { fila.personasSeleccionadas.push(nombre); if (fila.supervisoresSeleccionados.length === 0) fila.supervisoresSeleccionados.push(nombre); }
+                },
+                clQuitarPersona(index) {
+                    const fila = this.clFilasFiltradas[index];
+                    if (fila.personasSeleccionadas.length > 0) {
+                        const removido = fila.personasSeleccionadas.pop();
+                        const idx = fila.supervisoresSeleccionados.indexOf(removido); if (idx !== -1) fila.supervisoresSeleccionados.splice(idx, 1);
+                        const wIdx = fila.auditoresWifi.indexOf(removido); if (wIdx !== -1) fila.auditoresWifi.splice(wIdx, 1);
+                    }
+                },
+                clAgregarSupervisor(index) {
+                    const fila = this.clFilasFiltradas[index]; if (!fila) return; const valor = fila.supervisorTemp;
+                    if (valor && fila.personasSeleccionadas.includes(valor) && !fila.supervisoresSeleccionados.includes(valor)) fila.supervisoresSeleccionados.push(valor);
+                    fila.supervisorTemp = '';
+                },
+                clQuitarSupervisor(index, nombre) { const fila = this.clFilasFiltradas[index]; if (!fila) return; const idx = fila.supervisoresSeleccionados.indexOf(nombre); if (idx !== -1) fila.supervisoresSeleccionados.splice(idx, 1); },
+                clSupervisoresDisponibles(fila) { return fila.personasSeleccionadas.filter(p => !fila.supervisoresSeleccionados.includes(p)); },
+                clCambiarEstado(index) {
+                    const fila = this.clFilasFiltradas[index]; if (!fila) return;
+                    if (fila.estado === 'pendiente' || fila.estado === 'agendado') fila.motivoReauditoria = null;
+                },
+                clImportarAuditores(event) {
+                    const file = event.target.files[0]; if (!file) return; const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const workbook = XLSX.read(e.target.result, { type: 'array' }); const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                            const clavesExistentes = new Set(this.clAuditores.map(normalizarClave));
+                            jsonData.forEach(row => {
+                                const nombre = String(row['Nombre y Apellido'] || row['NOMBRE'] || '').trim();
+                                if (nombre) { const clave = normalizarClave(nombre); if (!clavesExistentes.has(clave)) { this.clAuditores.push(nombre); clavesExistentes.add(clave); } }
+                            });
+                        } catch (error) {}
+                    };
+                    reader.readAsArrayBuffer(file); event.target.value = '';
+                },
+                clImportarBD(event) {
+                    const file = event.target.files[0]; if (!file) return; const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const workbook = XLSX.read(e.target.result, { type: 'array' }); const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                            jsonData.forEach(row => {
+                                let fechaConvertida = row['Ultimo Inventario'] ? convertirFecha(row['Ultimo Inventario']) : '';
+                                const fila = { _uid: nextUid(), DEPOSITO: row['DEPOSITO'] || '', SECTOR: row['SECTOR'] || '', Ultimo_Inventario: fechaConvertida, personasSeleccionadas: [], auditoresWifi: [], personaTemp: '', supervisorTemp: '', horaConvocatoria: row['HORA_CONVOCATORIA'] || '07:30', horaSalida: row['HORA_SALIDA'] || '17:30', seleccionado: true, estado: 'pendiente', motivoReauditoria: null, supervisoresSeleccionados: [], esReauditoria: false, tieneReauditoria: false, origenUid: null, reauditoriaUid: null };
+                                fila.dias = calcularDiasDesde(fila.Ultimo_Inventario); fila.colorClase = getColorClase(fila.dias);
+                                this.clFilas.push(fila);
+                            });
+                            this.clBloqueado = true;
+                        } catch (error) {}
+                    };
+                    reader.readAsArrayBuffer(file); event.target.value = '';
+                },
+                clAgregarAuditor() {
+                    const nombre = this.clNuevoAuditorNombre.trim(); if (!nombre) return;
+                    if (!this.clAuditores.some(a => normalizarClave(a) === normalizarClave(nombre))) { this.clAuditores.push(nombre); this.clNuevoAuditorNombre = ''; }
+                },
+                clToggleAgendar() {
+                    const pendientes = this.clFilas.filter(f => f.seleccionado && f.estado === 'pendiente');
+                    if (pendientes.length > 0) { pendientes.forEach(f => f.estado = 'agendado'); } else {
+                        const agendados = this.clFilas.filter(f => f.seleccionado && f.estado === 'agendado');
+                        if (agendados.length > 0) agendados.forEach(f => f.estado = 'pendiente');
+                    }
+                },
+                clGenerar() {
+                    const agendados = this.clFilas.filter(f => f.seleccionado && f.estado === 'agendado'); if (agendados.length === 0) return;
+                    agendados.forEach(f => f.estado = 'generado'); const texto = this.generarTexto(agendados, true);
+                    this.mostrarGenerado(texto, 'Centro Logístico', agendados.length, agendados);
+                },
+                clAbrirReauditar() { if (this.clFilas.filter(f => f.seleccionado && (f.estado === 'auditado' || f.estado === 'reauditado')).length === 0) return; this.reauditarModulo = 'cl'; this.reauditarMotivo = null; this.reauditarMostrar = true; },
+                clExportarCSV() { this.exportarCSV('cl'); },
+
+                // Global Methods
+                generarTexto(puntos, esCL) {
+                    if (!puntos || puntos.length === 0) return null;
+                    const fechaStr = formatearFecha(getFechaManana());
+                    let texto = `Buenas noches señores\n\nPaso el cronograma de trabajo para mañana ${fechaStr}\n\n`;
+                    
+                    const getNameWithWifi = (name, fila) => {
+                        return (fila.auditoresWifi && fila.auditoresWifi.includes(name)) ? `${obtenerNombreApellido(name)} 📶` : obtenerNombreApellido(name);
+                    };
+
+                    puntos.forEach((f) => {
+                        const identificador = esCL ? (f.DEPOSITO || 'S/N') : (f.NRO_SUCURSAL || 'S/N');
+                        const descripcion = esCL ? (f.SECTOR || 'Sin sector') : (f.ESTR_DESCRIPCION || 'Dirección no especificada');
+                        const supervisores = (f.supervisoresSeleccionados && f.supervisoresSeleccionados.length > 0) ? f.supervisoresSeleccionados : (f.personasSeleccionadas.length > 0 ? [f.personasSeleccionadas[0]] : []);
+                        
+                        texto += `${esCL ? 'Depósito' : 'Punto'} ${identificador}${esCL ? ' - ' : '- '}${descripcion}`;
+                        
+                        let tiempos = [];
+                        if (f.horaConvocatoria) tiempos.push(`Convocatoria: ${f.horaConvocatoria} hs`);
+                        if (f.horaSalida) tiempos.push(`Salida: ${f.horaSalida} hs`);
+                        if (tiempos.length > 0) { texto += ` (${tiempos.join(' - ')})\n`; } else { texto += '\n'; }
+                        
+                        texto += `Sup. ${supervisores.length > 0 ? supervisores.map(s => getNameWithWifi(s, f)).join(', ') : 'Supervisor no asignado'}\n\n`;
+                        
+                        const auditores = f.personasSeleccionadas.filter(p => !supervisores.includes(p));
+                        if (auditores.length > 0) { auditores.forEach(a => { texto += `* ${getNameWithWifi(a, f)}\n`; }); } else { texto += `* (sin auditores adicionales)\n`; }
+                        texto += '\n';
+                    });
+                    texto += 'Buen resto de jornada';
+                    return texto;
+                },
+                mostrarGenerado(texto, modulo, cantidad, puntos) {
+                    const msgData = {
+                        modulo: modulo, cantidad: cantidad, fecha: formatearFecha(getFechaManana()),
+                        texto: texto, textoHtml: escapeHtml(texto).replace(/\n/g, '<br>'), puntos: puntos, vecesCompartido: 0
+                    };
+                    if (modulo.includes('Ventas')) { this.ultimoMensajePF = msgData; } else { this.ultimoMensajeCL = msgData; }
+                    this.restaurarMensaje(msgData);
+                },
+                restaurarMensaje(msgData) {
+                    this.generadoModulo = msgData.modulo; this.generadoCantidad = msgData.cantidad; this.generadoFecha = msgData.fecha;
+                    this.generadoTexto = msgData.texto; this.generadoTextoHtml = msgData.textoHtml; this.generadoPuntos = msgData.puntos;
+                    this.generadoVecesCompartido = msgData.vecesCompartido; this.generadoMostrar = true;
+                },
+                generadoCopiar() {
+                    const fallback = () => { const ta = document.createElement('textarea'); ta.value = this.generadoTexto; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); this.notificar('Copiado al portapapeles.', 'success'); };
+                    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(this.generadoTexto).then(() => this.notificar('Copiado.', 'success')).catch(fallback); else fallback();
+                },
+                generadoCompartir() { 
+                    this.generadoVecesCompartido++; 
+                    const isPF = this.generadoModulo.includes('Ventas');
+                    if (isPF && this.ultimoMensajePF) this.ultimoMensajePF.vecesCompartido = this.generadoVecesCompartido;
+                    if (!isPF && this.ultimoMensajeCL) this.ultimoMensajeCL.vecesCompartido = this.generadoVecesCompartido;
+                    window.open(`https://wa.me/?text=${encodeURIComponent(this.generadoTexto)}`, '_blank', 'noopener'); 
+                },
+                generadoMarcarAuditado() {
+                    const data = this.generadoModulo.includes('Ventas') ? this.pfFilas : this.clFilas;
+                    this.generadoPuntos.forEach(f => { const fila = data.find(ff => ff._uid === f._uid); if (fila && fila.estado !== 'auditado') fila.estado = 'auditado'; });
+                    this.generadoMostrar = false;
+                },
+                mostrarRuta(puntos, titulo) { this.rutaTitulo = titulo; this.rutaPuntos = [...puntos].sort((a, b) => parseInt(String(a.NRO_SUCURSAL || a.DEPOSITO).replace(/\D/g, '')) - parseInt(String(b.NRO_SUCURSAL || b.DEPOSITO).replace(/\D/g, ''))); this.rutaMostrar = true; },
+                reauditarConfirmar() {
+                    if (!this.reauditarMotivo) return; const data = this.reauditarModulo === 'pf' ? this.pfFilas : this.clFilas;
+                    const seleccionados = data.filter(f => f.seleccionado && (f.estado === 'auditado' || f.estado === 'reauditado'));
+                    const motivoTexto = this.motivosReauditoria.find(m => m.valor === this.reauditarMotivo)?.texto || '';
+                    seleccionados.forEach(original => {
+                        const nuevo = { ...original, _uid: nextUid(), personasSeleccionadas: [...original.personasSeleccionadas], supervisoresSeleccionados: [...original.supervisoresSeleccionados], auditoresWifi: [...(original.auditoresWifi || [])], personaTemp: '', supervisorTemp: '', seleccionado: true, estado: 'pendiente', motivoReauditoria: motivoTexto, esReauditoria: true, tieneReauditoria: false, origenUid: original._uid, reauditoriaUid: null, Ultimo_Inventario: '', dias: null, colorClase: '', horaConvocatoria: '07:30', horaSalida: '17:30' };
+                        data.push(nuevo); original.tieneReauditoria = true; original.reauditoriaUid = nuevo._uid;
+                    });
+                    this.reauditarMostrar = false; this.reauditarMotivo = null; this.notificar('Reauditorías generadas.', 'success');
+                },
+                abrirEliminarTodo(modulo) { this.eliminarModulo = modulo; this.eliminarPassword = ''; this.eliminarMostrar = true; },
+                confirmarEliminarTodo() {
+                    if (this.eliminarPassword.trim().toUpperCase() !== 'ELIMINAR') return;
+                    if (this.eliminarModulo === 'pf') { this.pfFilas = []; this.pfAuditores = []; this.pfBloqueado = false; this.ultimoMensajePF = null; } else { this.clFilas = []; this.clAuditores = []; this.clBloqueado = false; this.ultimoMensajeCL = null; }
+                    this.eliminarMostrar = false; this.notificar('Datos eliminados.', 'success');
+                },
+                exportarCSV(modulo) {
+                    const data = modulo === 'pf' ? this.pfFilas : this.clFilas;
+                    if (data.length === 0) return;
+                    let headers = modulo === 'cl' ? 
+                        ['DEPOSITO', 'SECTOR', 'Ultimo Inventario', 'Días', 'HORA_CONVOCATORIA', 'HORA_SALIDA', 'PERSONAS_ASIGNADAS', 'SUPERVISORES', 'AUDITORES_WIFI', 'SELECCIONADO', 'ESTADO', 'MOTIVO', 'ES_REAUDITORIA', 'TIENE_REAUDITORIA'] : 
+                        ['NRO_SUCURSAL', 'ESTR_COD', 'ESTR_DESCRIPCION', 'UBIC_TIPO', 'UBIC_ABREVIATURA', 'AÑO_APER', 'Ultimo Inventario', 'Días', 'HORA_CONVOCATORIA', 'HORA_SALIDA', 'CLUS_DESCRIPCION', 'CANT_GONDOLAS', 'ESTR_GRUPOS', 'ENCAR_FCH_NACI', 'ANTIGUEDAD_ENCAR', 'ESTR_DESCRI', 'NOMBRE_ENCARGADO', 'NOMBRE_SUPERVISOR', 'NOMBRE_ADMINITRATIVO', 'PERSONAS_ASIGNADAS', 'SUPERVISORES', 'AUDITORES_WIFI', 'SELECCIONADO', 'ESTADO', 'MOTIVO', 'ES_REAUDITORIA', 'TIENE_REAUDITORIA'];
+                    const escaparCsv = (valor) => `"${String(valor === null || valor === undefined ? '' : valor).replace(/"/g, '""')}"`;
+                    let csv = '\uFEFF' + headers.map(escaparCsv).join(',') + '\n';
+                    data.forEach(f => {
+                        let row = modulo === 'cl' ? 
+                            [f.DEPOSITO || '', f.SECTOR || '', f.Ultimo_Inventario || '', f.dias !== null ? f.dias : '', f.horaConvocatoria || '', f.horaSalida || '', f.personasSeleccionadas.join('; '), (f.supervisoresSeleccionados || []).join('; '), (f.auditoresWifi || []).join('; '), f.seleccionado ? 'Sí' : 'No', f.estado, f.motivoReauditoria || '', f.esReauditoria ? 'Sí' : 'No', f.tieneReauditoria ? 'Sí' : 'No'] : 
+                            [f.NRO_SUCURSAL || '', f.ESTR_COD || '', f.ESTR_DESCRIPCION || '', f.UBIC_TIPO || '', f.UBIC_ABREVIATURA || '', f.AÑO_APER || '', f.Ultimo_Inventario || '', f.dias !== null ? f.dias : '', f.horaConvocatoria || '', f.horaSalida || '', f.CLUS_DESCRIPCION || '', f.CANT_GONDOLAS || '', f.ESTR_GRUPOS || '', f.ENCAR_FCH_NACI || '', f.ANTIGUEDAD_ENCAR || '', f.ESTR_DESCRI || '', f.NOMBRE_ENCARGADO || '', f.NOMBRE_SUPERVISOR || '', f.NOMBRE_ADMINITRATIVO || '', f.personasSeleccionadas.join('; '), (f.supervisoresSeleccionados || []).join('; '), (f.auditoresWifi || []).join('; '), f.seleccionado ? 'Sí' : 'No', f.estado, f.motivoReauditoria || '', f.esReauditoria ? 'Sí' : 'No', f.tieneReauditoria ? 'Sí' : 'No'];
+                        csv += row.map(escaparCsv).join(',') + '\n';
+                    });
+                    const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); link.download = `cronograma_${modulo}_${new Date().toISOString().slice(0, 10)}.csv`; document.body.appendChild(link); link.click(); document.body.removeChild(link);
+                }
+            }
+        });
+    })();
+</script>
+</body>
+</html>
