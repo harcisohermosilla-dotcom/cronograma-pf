@@ -904,6 +904,23 @@
         </div>
     </div>
 
+    <div class="modal-overlay" v-if="mostrarAuditadosModal" @click.self="mostrarAuditadosModal = false">
+        <div class="modal-content">
+            <button class="close-modal" @click="mostrarAuditadosModal = false">&times;</button>
+            <h2><i class="fas fa-check-circle" style="color:#16a34a;"></i> {{ auditadosModalModulo === 'pf' ? 'PDVs Auditados' : 'Depósitos Auditados' }}</h2>
+            <div style="margin-bottom:12px;"><input type="text" class="search-auditor" v-model="auditadosModalBusqueda" :placeholder="auditadosModalModulo === 'pf' ? '🔍 Buscar PDV...' : '🔍 Buscar depósito...'"></div>
+            <div style="margin-bottom:10px; display:flex; gap:8px; flex-wrap:wrap;"><span class="badge badge-primary">Total: {{ listaAuditadosFiltrada.length }}</span></div>
+            <div v-if="listaAuditadosFiltrada.length === 0" style="text-align:center; padding:30px; color:#94a3b8;"><i class="fas fa-check-circle" style="font-size:2rem; display:block; margin-bottom:10px;"></i> Todavía no hay auditados</div>
+            <div v-else style="max-height:50vh; overflow-y:auto;">
+                <div class="auditor-item" v-for="f in listaAuditadosFiltrada" :key="f._uid" style="flex-direction:column; align-items:flex-start; gap:2px;">
+                    <div class="nombre" style="font-weight:700;">{{ auditadosModalModulo === 'pf' ? ('PDV ' + (f.NRO_SUCURSAL || 'S/N') + (f.ESTR_DESCRIPCION ? (' - ' + f.ESTR_DESCRIPCION) : '')) : ('Depósito ' + (f.DEPOSITO || 'S/N') + (f.SECTOR ? (' - Sector ' + f.SECTOR) : '')) }}</div>
+                    <div style="font-size:0.68rem; color:#64748b;">📅 Último inventario: {{ f.Ultimo_Inventario || 'N/A' }} · 👤 {{ (f.personasSeleccionadas || []).map(obtenerNombreApellido).join(', ') || 'Sin auditor asignado' }}</div>
+                </div>
+            </div>
+            <button class="btn btn-outline" style="margin-top:12px;" @click="mostrarAuditadosModal = false">Cerrar</button>
+        </div>
+    </div>
+
     <div class="modal-overlay" v-if="pfMostrarResumen" @click.self="pfMostrarResumen = false">
         <div class="modal-content">
             <button class="close-modal" @click="pfMostrarResumen = false">&times;</button>
@@ -911,6 +928,7 @@
             <div class="resumen-params" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
                 <div class="param-item"><div class="valor">{{ pfCantidadPDVsUnicos }}</div><div class="etiqueta">🏬 Cantidad de PDVs</div></div>
                 <div class="param-item"><div class="valor">{{ pfCantidadAuditorias }}</div><div class="etiqueta">📝 Cantidad de auditorías</div></div>
+                <div class="param-item" @click="abrirListaAuditados('pf')"><div class="valor"><a href="#">{{ pfAuditados }}</a></div><div class="etiqueta">✅ Auditados</div></div>
             </div>
             <h3 style="margin-top:16px; margin-bottom:8px; font-size:0.9rem; color:#475569;">📊 Por Rango de Días</h3>
             <div class="resumen-params">
@@ -931,6 +949,7 @@
             <div class="resumen-params" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
                 <div class="param-item"><div class="valor">{{ clCantidadPDVsUnicos }}</div><div class="etiqueta">🏭 Cantidad de depósitos</div></div>
                 <div class="param-item"><div class="valor">{{ clCantidadAuditorias }}</div><div class="etiqueta">📝 Cantidad de auditorías</div></div>
+                <div class="param-item" @click="abrirListaAuditados('cl')"><div class="valor"><a href="#">{{ clAuditados }}</a></div><div class="etiqueta">✅ Auditados</div></div>
             </div>
             <h3 style="margin-top:16px; margin-bottom:8px; font-size:0.9rem; color:#475569;">📊 Por Rango de Días</h3>
             <div class="resumen-params">
@@ -1242,6 +1261,7 @@
                 generadoMostrar: false, generadoModulo: '', generadoCantidad: 0, generadoFecha: '', generadoTexto: '', generadoTextoHtml: '', generadoPuntos: [], generadoVecesCompartido: 0,
                 eliminarMostrar: false, eliminarModulo: 'pf', eliminarPassword: '',
                 mostrarAuditoresModal: false, auditoresModalTitulo: '', auditoresModalLista: [], auditoresModalBusqueda: '',
+                mostrarAuditadosModal: false, auditadosModalModulo: 'pf', auditadosModalBusqueda: '',
                 // Estado de Google Drive
                 driveConectado: false, driveConectando: false, driveUsuario: '', driveSincronizando: false,
                 driveUltimaSync: '', driveError: '', driveFileId: null, driveModifiedTimeConocido: null, driveExcelFileId: null,
@@ -1251,6 +1271,15 @@
             },
             computed: {
                 auditoresModalListaFiltrada() { if (!this.auditoresModalBusqueda) return this.auditoresModalLista; const q = this.auditoresModalBusqueda.toLowerCase(); return this.auditoresModalLista.filter(a => obtenerNombreApellido(a).toLowerCase().includes(q)); },
+                listaAuditadosFiltrada() {
+                    const fuente = this.auditadosModalModulo === 'pf' ? this.pfFilas : this.clFilas;
+                    const auditados = fuente.filter(f => f.estado === 'auditado');
+                    if (!this.auditadosModalBusqueda) return auditados;
+                    const q = this.auditadosModalBusqueda.toLowerCase();
+                    return auditados.filter(f => this.auditadosModalModulo === 'pf'
+                        ? ((f.NRO_SUCURSAL && String(f.NRO_SUCURSAL).toLowerCase().includes(q)) || (f.ESTR_DESCRIPCION && f.ESTR_DESCRIPCION.toLowerCase().includes(q)))
+                        : ((f.DEPOSITO && String(f.DEPOSITO).toLowerCase().includes(q)) || (f.SECTOR && f.SECTOR.toLowerCase().includes(q))));
+                },
                 filasCriticas() {
                     const pf = this.pfFilas.filter(f => typeof f.dias === 'number' && f.dias > 180).map(f => ({ uid: f._uid, texto: `PDV ${f.NRO_SUCURSAL || 'S/N'} (${f.ESTR_DESCRIPCION || ''}) - ${f.dias} días sin inventario` }));
                     const cl = this.clFilas.filter(f => typeof f.dias === 'number' && f.dias > 180).map(f => ({ uid: f._uid, texto: `Depósito ${f.DEPOSITO || 'S/N'} - Sector ${f.SECTOR || ''} - ${f.dias} días sin inventario` }));
@@ -1662,6 +1691,11 @@
                     switch (filtro) { case 'verde': return fila.dias < 150; case 'amarillo': return fila.dias >= 150 && fila.dias < 170; case 'naranja': return fila.dias >= 170 && fila.dias < 175; case 'rojo': return fila.dias >= 175 && fila.dias <= 180; case 'rojo-fuerte': return fila.dias > 180; default: return true; }
                 },
                 pfFiltrarPorDias(filtro) { this.pfFiltroDias = filtro; this.pfMostrarResumen = false; }, pfFiltrarPorGrupo(grupo) { this.pfGrupo = grupo === 'Sin grupo' ? '' : grupo; this.pfMostrarResumen = false; },
+                abrirListaAuditados(modulo) {
+                    this.auditadosModalModulo = modulo; this.auditadosModalBusqueda = '';
+                    if (modulo === 'pf') this.pfMostrarResumen = false; else this.clMostrarResumen = false;
+                    this.mostrarAuditadosModal = true;
+                },
                 clFiltrarPorDias(filtro) { this.clFiltroDias = filtro; this.clMostrarResumen = false; }, clFiltrarPorSector(sector) { this.clSector = sector === 'Sin sector' ? '' : sector; this.clMostrarResumen = false; },
                 toggleWifi(fila, nombre) {
                     if (!fila.auditoresWifi) this.$set(fila, 'auditoresWifi', []);
