@@ -428,6 +428,18 @@
         body.forzar-escritorio h1 { font-size: 1.8rem !important; flex-wrap: nowrap !important; }
         body.forzar-escritorio .tab-btn { padding: 10px 18px !important; font-size: 0.9rem !important; }
         body.forzar-escritorio .drive-bar { flex-direction: row !important; }
+        .logo-upload {
+            width: 44px; height: 44px; border-radius: 12px; background: #eef2ff; border: 2px dashed #c7d2fe;
+            display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden;
+            flex-shrink: 0; transition: 0.15s; position: relative;
+        }
+        .logo-upload:hover { border-color: #4f46e5; }
+        .logo-upload img { width: 100%; height: 100%; object-fit: cover; }
+        .logo-upload i { color: #6366f1; font-size: 1.1rem; }
+        .logo-upload .logo-quitar {
+            position: absolute; top: -4px; right: -4px; background: #dc2626; color: white; width: 16px; height: 16px;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.55rem; border: none; cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -441,6 +453,12 @@
     </transition-group>
 
     <h1>
+        <div class="logo-upload" @click="$refs.logoInput.click()" title="Click para subir el logo de tu empresa">
+            <img v-if="logoBase64" :src="logoBase64" alt="Logo">
+            <i v-else class="fas fa-image"></i>
+            <button v-if="logoBase64" class="logo-quitar" @click.stop="quitarLogo" title="Quitar logo"><i class="fas fa-times"></i></button>
+        </div>
+        <input type="file" ref="logoInput" accept="image/*" style="display:none" @change="subirLogo">
         <i class="fas fa-clipboard-list"></i>
         Cronograma de inventarios PF
         <span class="vista-switch-wrap">
@@ -459,6 +477,10 @@
         <button class="header-icon-btn" @click="mostrarNotificacionesModal = true" title="Notificaciones">
             <i class="fas fa-bell"></i>
             <span class="badge-count" v-if="historialNotificaciones.length">{{ historialNotificaciones.length > 99 ? '99+' : historialNotificaciones.length }}</span>
+        </button>
+        <button class="header-icon-btn" :style="filasCriticas.length ? 'background:#fee2e2; color:#dc2626; border-color:#fecaca;' : ''" @click="notificacionesPushActivas ? desactivarNotificacionesPush() : activarNotificacionesPush()" :title="notificacionesPushActivas ? 'Notificaciones push activadas (' + filasCriticas.length + ' con +180 días). Click para desactivar.' : 'Activar notificaciones push para inventarios de +180 días'">
+            <i :class="notificacionesPushActivas ? 'fas fa-bell' : 'fas fa-bell-slash'"></i>
+            <span class="badge-count" v-if="filasCriticas.length" style="background:#dc2626;">{{ filasCriticas.length > 99 ? '99+' : filasCriticas.length }}</span>
         </button>
         <button class="header-icon-btn" @click="mostrarBitacoraModal = true" title="Bitácora de auditoría">
             <i class="fas fa-book"></i>
@@ -1224,9 +1246,16 @@
                 driveConectado: false, driveConectando: false, driveUsuario: '', driveSincronizando: false,
                 driveUltimaSync: '', driveError: '', driveFileId: null, driveModifiedTimeConocido: null, driveExcelFileId: null,
                 vistaDispositivo: 'movil',
+                logoBase64: null,
+                notificacionesPushActivas: false,
             },
             computed: {
                 auditoresModalListaFiltrada() { if (!this.auditoresModalBusqueda) return this.auditoresModalLista; const q = this.auditoresModalBusqueda.toLowerCase(); return this.auditoresModalLista.filter(a => obtenerNombreApellido(a).toLowerCase().includes(q)); },
+                filasCriticas() {
+                    const pf = this.pfFilas.filter(f => typeof f.dias === 'number' && f.dias > 180).map(f => ({ uid: f._uid, texto: `PDV ${f.NRO_SUCURSAL || 'S/N'} (${f.ESTR_DESCRIPCION || ''}) - ${f.dias} días sin inventario` }));
+                    const cl = this.clFilas.filter(f => typeof f.dias === 'number' && f.dias > 180).map(f => ({ uid: f._uid, texto: `Depósito ${f.DEPOSITO || 'S/N'} - Sector ${f.SECTOR || ''} - ${f.dias} días sin inventario` }));
+                    return [...pf, ...cl];
+                },
                 pfFilasFiltradas() {
                     return this.pfFilas.filter(f => {
                         const coincidePDV = !this.pfBuscar || (f.NRO_SUCURSAL && String(f.NRO_SUCURSAL).toLowerCase().includes(this.pfBuscar.toLowerCase())) || (f.ESTR_DESCRIPCION && f.ESTR_DESCRIPCION.toLowerCase().includes(this.pfBuscar.toLowerCase()));
@@ -1262,6 +1291,7 @@
                 pfFilas: { handler() { this.guardarTodo(); }, deep: true }, clFilas: { handler() { this.guardarTodo(); }, deep: true },
                 pfAuditores: { handler() { this.guardarTodo(); }, deep: true }, clAuditores: { handler() { this.guardarTodo(); }, deep: true },
                 pfBloqueado() { this.guardarTodo(); }, clBloqueado() { this.guardarTodo(); }, bitacora: { handler() { this.guardarTodo(); }, deep: true }, historialNotificaciones: { handler() { this.guardarTodo(); }, deep: true },
+                filasCriticas: { handler(nuevas) { this.procesarAlertasCriticas(nuevas); }, deep: true },
             },
             created() {
                 this.cargarDesdeAlmacenamiento();
@@ -1274,6 +1304,10 @@
                 if (this.driveExcelFileId === 'undefined' || this.driveExcelFileId === 'null' || this.driveExcelFileId === '') { this.driveExcelFileId = null; localStorage.removeItem('drive_excel_file_id'); }
                 this.vistaDispositivo = localStorage.getItem('vista_dispositivo') || 'movil';
                 this.aplicarVistaDispositivo();
+                this.logoBase64 = localStorage.getItem('app_logo') || null;
+                this.notificacionesPushActivas = localStorage.getItem('notificaciones_push_activas') === '1' && typeof Notification !== 'undefined' && Notification.permission === 'granted';
+                this.actualizarDiasTodasFilas();
+                setInterval(() => this.actualizarDiasTodasFilas(), 60000);
                 this.$nextTick(() => this.driveInit());
             },
             methods: {
@@ -1369,6 +1403,71 @@
                     } else {
                         if (meta) meta.setAttribute('content', 'width=device-width, initial-scale=1.0');
                     }
+                },
+
+                subirLogo(e) {
+                    const file = e.target.files && e.target.files[0]; if (!file) return;
+                    if (!file.type.startsWith('image/')) { this.notificar('El archivo debe ser una imagen.', 'error'); return; }
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const maxDim = 200;
+                            let w = img.width, h = img.height;
+                            if (w > h) { if (w > maxDim) { h = Math.round(h * maxDim / w); w = maxDim; } }
+                            else { if (h > maxDim) { w = Math.round(w * maxDim / h); h = maxDim; } }
+                            const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
+                            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                            const dataUrl = canvas.toDataURL('image/png', 0.85);
+                            this.logoBase64 = dataUrl;
+                            try { localStorage.setItem('app_logo', dataUrl); } catch (err) { this.notificar('La imagen es muy pesada para guardarla, probá con una más chica.', 'error'); }
+                        };
+                        img.src = ev.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                    e.target.value = '';
+                },
+                quitarLogo() { this.logoBase64 = null; localStorage.removeItem('app_logo'); },
+
+                actualizarDiasTodasFilas() {
+                    [...this.pfFilas, ...this.clFilas].forEach(f => { f.dias = calcularDiasDesde(f.Ultimo_Inventario); f.colorClase = getColorClase(f.dias); });
+                },
+                activarNotificacionesPush() {
+                    if (typeof Notification === 'undefined') { this.notificar('Este navegador no soporta notificaciones push.', 'error'); return; }
+                    if (Notification.permission === 'granted') {
+                        this.notificacionesPushActivas = true; localStorage.setItem('notificaciones_push_activas', '1');
+                        this.notificar('Notificaciones push activadas.', 'success');
+                        return;
+                    }
+                    Notification.requestPermission().then(permiso => {
+                        if (permiso === 'granted') {
+                            this.notificacionesPushActivas = true; localStorage.setItem('notificaciones_push_activas', '1');
+                            this.notificar('Notificaciones push activadas.', 'success');
+                        } else {
+                            this.notificacionesPushActivas = false; localStorage.setItem('notificaciones_push_activas', '0');
+                            this.notificar('No se otorgó el permiso de notificaciones. Podés habilitarlo desde la configuración del navegador.', 'error');
+                        }
+                    });
+                },
+                desactivarNotificacionesPush() { this.notificacionesPushActivas = false; localStorage.setItem('notificaciones_push_activas', '0'); this.notificar('Notificaciones push desactivadas.', 'info'); },
+                procesarAlertasCriticas(nuevas) {
+                    let notificadosPrevios = [];
+                    try { notificadosPrevios = JSON.parse(localStorage.getItem('alertas_180_notificadas') || '[]'); } catch (e) {}
+                    const uidsActuales = nuevas.map(n => n.uid);
+                    const nuevosParaAvisar = nuevas.filter(n => !notificadosPrevios.includes(n.uid));
+                    if (nuevosParaAvisar.length > 0) {
+                        nuevosParaAvisar.forEach(n => { this.notificar('⚠️ ' + n.texto + ' (supera 180 días)', 'error'); });
+                        if (this.notificacionesPushActivas && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                            try {
+                                if (nuevosParaAvisar.length === 1) {
+                                    new Notification('⚠️ Inventario vencido (+180 días)', { body: nuevosParaAvisar[0].texto });
+                                } else {
+                                    new Notification('⚠️ ' + nuevosParaAvisar.length + ' inventarios superan 180 días', { body: nuevosParaAvisar.map(n => n.texto).join('\n') });
+                                }
+                            } catch (e) { console.error('No se pudo mostrar la notificación push:', e); }
+                        }
+                    }
+                    localStorage.setItem('alertas_180_notificadas', JSON.stringify(uidsActuales));
                 },
 
                 // ==================== GOOGLE DRIVE ====================
