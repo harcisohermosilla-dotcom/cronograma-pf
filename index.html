@@ -608,12 +608,6 @@
                         <th>CLUS_DESCRIPCION</th>
                         <th>CANT_GONDOLAS</th>
                         <th>ESTR_GRUPOS</th>
-                        <th>ENCAR_FCH_NACI</th>
-                        <th>ANTIGUEDAD_ENCAR</th>
-                        <th>ESTR_DESCRI</th>
-                        <th>NOMBRE_ENCARGADO</th>
-                        <th>NOMBRE_SUPERVISOR</th>
-                        <th>NOMBRE_ADMINITRATIVO</th>
                         <th style="min-width:150px;">Auditores</th>
                         <th style="min-width:130px;">Supervisor(es)</th>
                         <th style="min-width:80px;">Estado</th>
@@ -637,12 +631,6 @@
                         <td><input class="input-sm" :class="{ 'no-edit': pfBloqueado }" v-model="fila.CLUS_DESCRIPCION" :disabled="pfBloqueado"></td>
                         <td><input class="input-sm" :class="{ 'no-edit': pfBloqueado }" v-model="fila.CANT_GONDOLAS" :disabled="pfBloqueado" style="min-width:30px;"></td>
                         <td><input class="input-sm" :class="{ 'no-edit': pfBloqueado }" v-model="fila.ESTR_GRUPOS" :disabled="pfBloqueado" style="min-width:40px;"></td>
-                        <td><input class="input-sm" :class="{ 'no-edit': pfBloqueado }" v-model="fila.ENCAR_FCH_NACI" :disabled="pfBloqueado" style="min-width:60px;"></td>
-                        <td><input class="input-sm" :class="{ 'no-edit': pfBloqueado }" v-model="fila.ANTIGUEDAD_ENCAR" :disabled="pfBloqueado" style="min-width:30px;"></td>
-                        <td><input class="input-sm" :class="{ 'no-edit': pfBloqueado }" v-model="fila.ESTR_DESCRI" :disabled="pfBloqueado"></td>
-                        <td><input class="input-sm" :class="{ 'no-edit': pfBloqueado }" v-model="fila.NOMBRE_ENCARGADO" :disabled="pfBloqueado"></td>
-                        <td><input class="input-sm" :class="{ 'no-edit': pfBloqueado }" v-model="fila.NOMBRE_SUPERVISOR" :disabled="pfBloqueado"></td>
-                        <td><input class="input-sm" :class="{ 'no-edit': pfBloqueado }" v-model="fila.NOMBRE_ADMINITRATIVO" :disabled="pfBloqueado"></td>
                         <td>
                             <div class="personas-container">
                                 <span class="tag-persona" v-for="p in fila.personasSeleccionadas" :key="p">
