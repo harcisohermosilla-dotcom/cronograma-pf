@@ -394,18 +394,22 @@
             .tab-btn { padding: 8px 12px; font-size: 0.8rem; }
         }
 
-        /* ===== Selector manual de vista (Escritorio / Móvil) ===== */
-        .vista-selector {
-            display: flex; align-items: center; gap: 6px; background: #f1f5f9;
-            border-radius: 10px; padding: 3px; margin-left: 10px;
+        /* ===== Switch encendido/apagado: Móvil (apagado) / Escritorio (encendido) ===== */
+        .vista-switch-wrap { display: flex; align-items: center; gap: 8px; margin-left: 10px; font-size: 0.78rem; color: #64748b; }
+        .vista-switch { position: relative; display: inline-block; width: 48px; height: 26px; flex-shrink: 0; }
+        .vista-switch input { opacity: 0; width: 0; height: 0; }
+        .vista-switch-slider {
+            position: absolute; cursor: pointer; inset: 0; background-color: #94a3b8;
+            transition: 0.25s; border-radius: 26px;
         }
-        .vista-selector button {
-            border: none; background: transparent; color: #64748b; padding: 6px 10px;
-            border-radius: 8px; font-size: 0.78rem; cursor: pointer; display: flex; align-items: center; gap: 5px;
-            transition: 0.15s;
+        .vista-switch-slider::before {
+            position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px;
+            background-color: white; transition: 0.25s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
         }
-        .vista-selector button:hover { color: #334155; }
-        .vista-selector button.activo { background: white; color: #4f46e5; box-shadow: 0 1px 4px rgba(0,0,0,0.12); font-weight: 600; }
+        .vista-switch input:checked + .vista-switch-slider { background-color: #4f46e5; }
+        .vista-switch input:checked + .vista-switch-slider::before { transform: translateX(22px); }
+        .vista-switch-wrap .icono-modo { width: 16px; text-align: center; color: #94a3b8; }
+        .vista-switch-wrap .icono-modo.activo { color: #4f46e5; }
 
         body.forzar-movil .app-container {
             max-width: 430px !important; margin: 20px auto !important; padding: 14px !important;
@@ -439,10 +443,13 @@
     <h1>
         <i class="fas fa-clipboard-list"></i>
         Cronograma de inventarios PF
-        <span class="vista-selector">
-            <button :class="{ activo: vistaDispositivo === 'auto' }" @click="cambiarVistaDispositivo('auto')" title="Detección automática según el dispositivo"><i class="fas fa-magic"></i> Auto</button>
-            <button :class="{ activo: vistaDispositivo === 'escritorio' }" @click="cambiarVistaDispositivo('escritorio')" title="Forzar vista de escritorio"><i class="fas fa-desktop"></i> Escritorio</button>
-            <button :class="{ activo: vistaDispositivo === 'movil' }" @click="cambiarVistaDispositivo('movil')" title="Forzar vista móvil"><i class="fas fa-mobile-alt"></i> Móvil</button>
+        <span class="vista-switch-wrap">
+            <i class="fas fa-mobile-alt icono-modo" :class="{ activo: vistaDispositivo === 'movil' }" title="Vista móvil"></i>
+            <label class="vista-switch">
+                <input type="checkbox" :checked="vistaDispositivo === 'escritorio'" @change="cambiarVistaDispositivo($event.target.checked ? 'escritorio' : 'movil')">
+                <span class="vista-switch-slider"></span>
+            </label>
+            <i class="fas fa-desktop icono-modo" :class="{ activo: vistaDispositivo === 'escritorio' }" title="Vista escritorio"></i>
         </span>
         <span><i class="fas fa-calendar-alt"></i> {{ fechaActual }}</span>
         <span class="indicador-guardado" :class="{ guardando: guardando }" :title="guardando ? 'Guardando cambios…' : 'Datos guardados en este navegador'">
@@ -1216,7 +1223,7 @@
                 // Estado de Google Drive
                 driveConectado: false, driveConectando: false, driveUsuario: '', driveSincronizando: false,
                 driveUltimaSync: '', driveError: '', driveFileId: null, driveModifiedTimeConocido: null, driveExcelFileId: null,
-                vistaDispositivo: 'auto',
+                vistaDispositivo: 'movil',
             },
             computed: {
                 auditoresModalListaFiltrada() { if (!this.auditoresModalBusqueda) return this.auditoresModalLista; const q = this.auditoresModalBusqueda.toLowerCase(); return this.auditoresModalLista.filter(a => obtenerNombreApellido(a).toLowerCase().includes(q)); },
@@ -1265,7 +1272,7 @@
                 if (this.driveFileId === 'undefined' || this.driveFileId === 'null' || this.driveFileId === '') { this.driveFileId = null; localStorage.removeItem('drive_file_id'); }
                 this.driveExcelFileId = localStorage.getItem('drive_excel_file_id') || null;
                 if (this.driveExcelFileId === 'undefined' || this.driveExcelFileId === 'null' || this.driveExcelFileId === '') { this.driveExcelFileId = null; localStorage.removeItem('drive_excel_file_id'); }
-                this.vistaDispositivo = localStorage.getItem('vista_dispositivo') || 'auto';
+                this.vistaDispositivo = localStorage.getItem('vista_dispositivo') || 'movil';
                 this.aplicarVistaDispositivo();
                 this.$nextTick(() => this.driveInit());
             },
@@ -1348,7 +1355,7 @@
                     this.vistaDispositivo = modo;
                     localStorage.setItem('vista_dispositivo', modo);
                     this.aplicarVistaDispositivo();
-                    this.notificar(modo === 'auto' ? 'Vista automática activada.' : (modo === 'escritorio' ? 'Vista de escritorio forzada.' : 'Vista móvil forzada.'), 'info');
+                    this.notificar(modo === 'escritorio' ? 'Vista de escritorio activada.' : 'Vista móvil activada.', 'info');
                 },
                 aplicarVistaDispositivo() {
                     document.body.classList.remove('forzar-movil', 'forzar-escritorio');
