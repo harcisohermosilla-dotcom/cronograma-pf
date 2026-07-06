@@ -543,6 +543,17 @@
                     <option value="rojo-fuerte">&gt; 180 días</option>
                 </select>
             </div>
+            <div class="search-container" style="min-width:140px;">
+                <i class="fas fa-tasks"></i>
+                <select v-model="pfFiltroEstado" style="border:none;outline:none;padding:4px 4px;font-size:0.75rem;background:transparent;cursor:pointer;">
+                    <option value="">Todos los estados</option>
+                    <option value="pendiente">⏳ Pendiente</option>
+                    <option value="agendado">📅 Agendado</option>
+                    <option value="generado">📋 Generado</option>
+                    <option value="auditado">✅ Auditado</option>
+                    <option value="reauditado">🔄 Reauditado</option>
+                </select>
+            </div>
             <div class="progreso-container">
                 <div class="progreso-item">
                     <i class="fas fa-chart-line" style="color:#2563eb;"></i>
@@ -610,6 +621,7 @@
                         <th>ESTR_GRUPOS</th>
                         <th style="min-width:150px;">Auditores</th>
                         <th style="min-width:130px;">Supervisor(es)</th>
+                        <th style="min-width:55px;" title="Cantidad de auditores que fueron al PDV, sin contar al supervisor">Cant. Aud.</th>
                         <th style="min-width:80px;">Estado</th>
                         <th style="min-width:70px;">Motivo</th>
                         <th class="col-acciones">✕</th>
@@ -659,6 +671,9 @@
                                     <option v-for="p in pfSupervisoresDisponibles(fila)" :key="p" :value="p">{{ obtenerNombreApellido(p) }}</option>
                                 </select>
                             </div>
+                        </td>
+                        <td style="text-align:center;">
+                            <span class="stats-badge" :style="cantAuditoresNetos(fila) > 0 ? 'background:#dbeafe; color:#1e40af;' : ''" title="Auditores asignados sin contar al supervisor">👥 {{ cantAuditoresNetos(fila) }}</span>
                         </td>
                         <td>
                             <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
@@ -727,6 +742,17 @@
                     <option value="naranja">170 - 175 días</option>
                     <option value="rojo">175 - 180 días</option>
                     <option value="rojo-fuerte">&gt; 180 días</option>
+                </select>
+            </div>
+            <div class="search-container" style="min-width:140px;">
+                <i class="fas fa-tasks"></i>
+                <select v-model="clFiltroEstado" style="border:none;outline:none;padding:4px 4px;font-size:0.75rem;background:transparent;cursor:pointer;">
+                    <option value="">Todos los estados</option>
+                    <option value="pendiente">⏳ Pendiente</option>
+                    <option value="agendado">📅 Agendado</option>
+                    <option value="generado">📋 Generado</option>
+                    <option value="auditado">✅ Auditado</option>
+                    <option value="reauditado">🔄 Reauditado</option>
                 </select>
             </div>
             <div class="progreso-container">
@@ -883,11 +909,31 @@
             <button class="close-modal" @click="mostrarAuditoresModal = false">&times;</button>
             <h2><i class="fas fa-users" style="color:#2563eb;"></i> Listado de Auditores - {{ auditoresModalTitulo }}</h2>
             <div style="margin-bottom:12px;"><input type="text" class="search-auditor" v-model="auditoresModalBusqueda" placeholder="🔍 Buscar auditor..."></div>
-            <div style="margin-bottom:10px; display:flex; gap:8px; flex-wrap:wrap;"><span class="badge badge-primary">Total: {{ auditoresModalLista.length }}</span></div>
-            <div v-if="auditoresModalListaFiltrada.length === 0" style="text-align:center; padding:30px; color:#94a3b8;"><i class="fas fa-users" style="font-size:2rem; display:block; margin-bottom:10px;"></i> No hay auditores registrados</div>
-            <div v-else>
-                <div class="auditor-item" v-for="auditor in auditoresModalListaFiltrada" :key="auditor"><div class="nombre">{{ auditor }}</div></div>
+            <div style="margin-bottom:10px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                <span class="badge badge-primary">Total: {{ auditoresModalLista.length }}</span>
+                <span class="badge badge-warning" v-if="cantidadAusentes">🚫 Ausentes: {{ cantidadAusentes }}</span>
+                <label style="display:flex; align-items:center; gap:5px; font-size:0.75rem; font-weight:600; cursor:pointer; margin-left:auto;">
+                    <input type="checkbox" :checked="todosAuditoresSeleccionados()" @change="toggleSeleccionTodosAuditores" style="width:14px; height:14px; accent-color:#2563eb; cursor:pointer;">
+                    Seleccionar todos
+                </label>
+                <button class="btn btn-danger btn-sm" @click="abrirAusenteModal" :disabled="auditoresModalSeleccionados.length === 0">
+                    <i class="fas fa-user-slash"></i> Marcar Ausente ({{ auditoresModalSeleccionados.length }})
+                </button>
             </div>
+            <div v-if="auditoresModalListaFiltrada.length === 0" style="text-align:center; padding:30px; color:#94a3b8;"><i class="fas fa-users" style="font-size:2rem; display:block; margin-bottom:10px;"></i> No hay auditores registrados</div>
+            <div v-else style="max-height:50vh; overflow-y:auto;">
+                <div class="auditor-item" v-for="auditor in auditoresModalListaFiltrada" :key="auditor" :style="esAusente(auditor) ? 'background:#fef2f2;' : ''">
+                    <div style="display:flex; align-items:center; gap:8px; flex:1; min-width:0;">
+                        <input type="checkbox" :checked="auditoresModalSeleccionados.includes(auditor)" @change="toggleSeleccionAuditor(auditor)" style="width:15px; height:15px; accent-color:#2563eb; cursor:pointer; flex-shrink:0;">
+                        <div class="nombre" :style="esAusente(auditor) ? 'color:#991b1b;' : ''">{{ auditor }}</div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                        <span v-if="esAusente(auditor)" class="stats-badge" style="background:#fee2e2; color:#991b1b;" :title="'Motivo: ' + motivoAusencia(auditor)">🚫 Ausente · {{ motivoAusencia(auditor) }}</span>
+                        <button v-if="esAusente(auditor)" class="btn btn-outline btn-sm" style="padding:2px 8px; font-size:0.6rem;" @click="quitarAusencia(auditor)" title="Reincorporar auditor"><i class="fas fa-user-check"></i> Reincorporar</button>
+                    </div>
+                </div>
+            </div>
+            <p style="font-size:0.68rem; color:#94a3b8; margin-top:8px;"><i class="fas fa-info-circle"></i> La base de auditores es compartida entre Puntos de Ventas y Centro Logístico. Los auditores ausentes no aparecen como disponibles para asignar en ningún módulo.</p>
             <button class="btn btn-outline" style="margin-top:12px;" @click="mostrarAuditoresModal = false">Cerrar</button>
         </div>
     </div>
@@ -895,10 +941,10 @@
     <div class="modal-overlay" v-if="mostrarAuditadosModal" @click.self="mostrarAuditadosModal = false">
         <div class="modal-content">
             <button class="close-modal" @click="mostrarAuditadosModal = false">&times;</button>
-            <h2><i class="fas fa-check-circle" style="color:#16a34a;"></i> {{ auditadosModalModulo === 'pf' ? 'PDVs Auditados' : 'Depósitos Auditados' }}</h2>
+            <h2><i class="fas fa-list-check" style="color:#16a34a;"></i> {{ auditadosModalModulo === 'pf' ? 'PDVs' : 'Depósitos' }} · {{ estadoTexto(auditadosModalEstado) }}</h2>
             <div style="margin-bottom:12px;"><input type="text" class="search-auditor" v-model="auditadosModalBusqueda" :placeholder="auditadosModalModulo === 'pf' ? '🔍 Buscar PDV...' : '🔍 Buscar depósito...'"></div>
             <div style="margin-bottom:10px; display:flex; gap:8px; flex-wrap:wrap;"><span class="badge badge-primary">Total: {{ listaAuditadosFiltrada.length }}</span></div>
-            <div v-if="listaAuditadosFiltrada.length === 0" style="text-align:center; padding:30px; color:#94a3b8;"><i class="fas fa-check-circle" style="font-size:2rem; display:block; margin-bottom:10px;"></i> Todavía no hay auditados</div>
+            <div v-if="listaAuditadosFiltrada.length === 0" style="text-align:center; padding:30px; color:#94a3b8;"><i class="fas fa-inbox" style="font-size:2rem; display:block; margin-bottom:10px;"></i> No hay registros en estado {{ estadoTexto(auditadosModalEstado) }}</div>
             <div v-else style="max-height:50vh; overflow-y:auto;">
                 <div class="auditor-item" v-for="f in listaAuditadosFiltrada" :key="f._uid" style="flex-direction:column; align-items:flex-start; gap:2px;">
                     <div class="nombre" style="font-weight:700;">{{ auditadosModalModulo === 'pf' ? ('PDV ' + (f.NRO_SUCURSAL || 'S/N') + (f.ESTR_DESCRIPCION ? (' - ' + f.ESTR_DESCRIPCION) : '')) : ('Depósito ' + (f.DEPOSITO || 'S/N') + (f.SECTOR ? (' - Sector ' + f.SECTOR) : '')) }}</div>
@@ -906,6 +952,35 @@
                 </div>
             </div>
             <button class="btn btn-outline" style="margin-top:12px;" @click="mostrarAuditadosModal = false">Cerrar</button>
+        </div>
+    </div>
+
+    <!-- Modal: motivo de ausencia -->
+    <div class="modal-overlay" v-if="ausenteMostrar" @click.self="ausenteMostrar = false" style="z-index:1001;">
+        <div class="modal-content">
+            <button class="close-modal" @click="ausenteMostrar = false">&times;</button>
+            <h2><i class="fas fa-user-slash" style="color:#dc2626;"></i> Marcar Ausente</h2>
+            <p style="color:#64748b; margin-bottom:6px;">Auditores seleccionados: <strong>{{ auditoresModalSeleccionados.length }}</strong></p>
+            <p style="font-size:0.72rem; color:#94a3b8; margin-bottom:10px;">{{ auditoresModalSeleccionados.map(obtenerNombreApellido).join(', ') }}</p>
+            <p style="color:#64748b; margin-bottom:8px;">Selecciona el motivo de la ausencia:</p>
+            <div style="margin:8px 0;">
+                <div class="motivo-item" v-for="motivo in motivosAusencia" :key="motivo.valor" :class="{ seleccionado: ausenteMotivo === motivo.valor }" @click="ausenteMotivo = motivo.valor">
+                    <i :class="motivo.icono"></i>
+                    <div>
+                        <div class="motivo-texto">{{ motivo.texto }}</div>
+                        <div class="motivo-desc">{{ motivo.descripcion }}</div>
+                    </div>
+                    <i v-if="ausenteMotivo === motivo.valor" class="fas fa-check-circle" style="color:#2563eb; font-size:1.2rem;"></i>
+                </div>
+            </div>
+            <div v-if="ausenteMotivo === 'otros'" style="margin:10px 0;">
+                <label style="font-weight:600; font-size:0.8rem; display:block; margin-bottom:5px;">Escribe el motivo:</label>
+                <input type="text" class="search-auditor" v-model="ausenteMotivoOtro" placeholder="Ej: capacitación, trámite personal..." @keyup.enter="confirmarAusente">
+            </div>
+            <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
+                <button class="btn btn-danger" @click="confirmarAusente" :disabled="!ausenteMotivo || (ausenteMotivo === 'otros' && !ausenteMotivoOtro.trim())"><i class="fas fa-check"></i> Confirmar Ausencia</button>
+                <button class="btn btn-outline" @click="ausenteMostrar = false">Cancelar</button>
+            </div>
         </div>
     </div>
 
@@ -917,6 +992,13 @@
                 <div class="param-item"><div class="valor">{{ pfCantidadPDVsUnicos }}</div><div class="etiqueta">🏬 Cantidad de PDVs</div></div>
                 <div class="param-item"><div class="valor">{{ pfCantidadAuditorias }}</div><div class="etiqueta">📝 Cantidad de auditorías</div></div>
                 <div class="param-item" @click="abrirListaAuditados('pf')"><div class="valor"><a href="#">{{ pfAuditados }}</a></div><div class="etiqueta">✅ Auditados</div></div>
+            </div>
+            <h3 style="margin-top:16px; margin-bottom:8px; font-size:0.9rem; color:#475569;">📌 Por Estado</h3>
+            <div class="resumen-params">
+                <div class="param-item" @click="abrirListaEstado('pf', 'pendiente')"><div class="valor"><a href="#">{{ pfPendientes }}</a></div><div class="etiqueta">⏳ Pendientes</div></div>
+                <div class="param-item" @click="abrirListaEstado('pf', 'agendado')"><div class="valor"><a href="#">{{ pfAgendados }}</a></div><div class="etiqueta">📅 Agendados</div></div>
+                <div class="param-item" @click="abrirListaEstado('pf', 'generado')"><div class="valor"><a href="#">{{ pfGenerados }}</a></div><div class="etiqueta">📋 Generados</div></div>
+                <div class="param-item" @click="abrirListaEstado('pf', 'reauditado')"><div class="valor"><a href="#">{{ pfReauditados }}</a></div><div class="etiqueta">🔄 Reauditados</div></div>
             </div>
             <h3 style="margin-top:16px; margin-bottom:8px; font-size:0.9rem; color:#475569;">📊 Por Rango de Días</h3>
             <div class="resumen-params">
@@ -938,6 +1020,13 @@
                 <div class="param-item"><div class="valor">{{ clCantidadPDVsUnicos }}</div><div class="etiqueta">🏭 Cantidad de depósitos</div></div>
                 <div class="param-item"><div class="valor">{{ clCantidadAuditorias }}</div><div class="etiqueta">📝 Cantidad de auditorías</div></div>
                 <div class="param-item" @click="abrirListaAuditados('cl')"><div class="valor"><a href="#">{{ clAuditados }}</a></div><div class="etiqueta">✅ Auditados</div></div>
+            </div>
+            <h3 style="margin-top:16px; margin-bottom:8px; font-size:0.9rem; color:#475569;">📌 Por Estado</h3>
+            <div class="resumen-params">
+                <div class="param-item" @click="abrirListaEstado('cl', 'pendiente')"><div class="valor"><a href="#">{{ clPendientes }}</a></div><div class="etiqueta">⏳ Pendientes</div></div>
+                <div class="param-item" @click="abrirListaEstado('cl', 'agendado')"><div class="valor"><a href="#">{{ clAgendados }}</a></div><div class="etiqueta">📅 Agendados</div></div>
+                <div class="param-item" @click="abrirListaEstado('cl', 'generado')"><div class="valor"><a href="#">{{ clGenerados }}</a></div><div class="etiqueta">📋 Generados</div></div>
+                <div class="param-item" @click="abrirListaEstado('cl', 'reauditado')"><div class="valor"><a href="#">{{ clReauditados }}</a></div><div class="etiqueta">🔄 Reauditados</div></div>
             </div>
             <h3 style="margin-top:16px; margin-bottom:8px; font-size:0.9rem; color:#475569;">📊 Por Rango de Días</h3>
             <div class="resumen-params">
@@ -1112,6 +1201,13 @@
             { valor: 'FRAUDE', texto: 'FRAUDE', descripcion: 'Sospecha de irregularidades', icono: 'fas fa-gavel' }
         ];
 
+        const motivosAusencia = [
+            { valor: 'reposo', texto: 'Reposo', descripcion: 'Reposo médico', icono: 'fas fa-notes-medical' },
+            { valor: 'vacacion', texto: 'Vacación', descripcion: 'Período de vacaciones', icono: 'fas fa-umbrella-beach' },
+            { valor: 'permiso', texto: 'Permiso', descripcion: 'Permiso autorizado', icono: 'fas fa-file-signature' },
+            { valor: 'otros', texto: 'Otros', descripcion: 'Especificar el motivo manualmente', icono: 'fas fa-ellipsis-h' }
+        ];
+
         const ESTADO_TEXTOS = { pendiente: '⏳ Pendiente', agendado: '📅 Agendado', generado: '📋 Generado', auditado: '✅ Auditado', reauditado: '🔄 Reauditado' };
 
         function obtenerNombreApellido(nombreCompleto) {
@@ -1239,17 +1335,20 @@
                     const dias = calcularDiasDesde(f.Ultimo_Inventario);
                     return { ...f, _uid: nextUid(), personaTemp: '', supervisorTemp: '', dias: dias, colorClase: getColorClase(dias), auditoresWifi: f.auditoresWifi || [], supervisoresSeleccionados: Array.isArray(f.supervisoresSeleccionados) ? f.supervisoresSeleccionados : [], horaConvocatoria: f.horaConvocatoria || '07:30', horaSalida: f.horaSalida || '17:30', esReauditoria: false, tieneReauditoria: false, origenUid: null, reauditoriaUid: null };
                 }),
-                pfAuditores: [...defaultPersonasPF], pfBuscar: '', pfGrupo: '', pfFiltroDias: '', pfSeleccionarTodos: true, pfNuevoAuditorNombre: '', pfMostrarResumen: false, pfBloqueado: false,
+                auditores: [...new Set([...defaultPersonasPF, ...defaultPersonasCL])],
+                auditoresAusentes: {},
+                pfBuscar: '', pfGrupo: '', pfFiltroDias: '', pfFiltroEstado: '', pfSeleccionarTodos: true, pfNuevoAuditorNombre: '', pfMostrarResumen: false, pfBloqueado: false,
                 clFilas: sampleDataCL.map(f => {
                     const dias = calcularDiasDesde(f.Ultimo_Inventario);
                     return { ...f, _uid: nextUid(), personaTemp: '', supervisorTemp: '', dias: dias, colorClase: getColorClase(dias), auditoresWifi: f.auditoresWifi || [], supervisoresSeleccionados: Array.isArray(f.supervisoresSeleccionados) ? f.supervisoresSeleccionados : [], horaConvocatoria: f.horaConvocatoria || '07:30', horaSalida: f.horaSalida || '17:30', esReauditoria: false, tieneReauditoria: false, origenUid: null, reauditoriaUid: null };
                 }),
-                clAuditores: [...defaultPersonasCL], clBuscar: '', clSector: '', clFiltroDias: '', clSeleccionarTodos: true, clNuevoAuditorNombre: '', clMostrarResumen: false, clBloqueado: false,
+                clBuscar: '', clSector: '', clFiltroDias: '', clFiltroEstado: '', clSeleccionarTodos: true, clNuevoAuditorNombre: '', clMostrarResumen: false, clBloqueado: false,
                 motivosReauditoria: motivosReauditoria, reauditarMostrar: false, reauditarModulo: 'pf', reauditarMotivo: null, rutaMostrar: false, rutaTitulo: '', rutaPuntos: [], rutaTiempo: 0,
+                motivosAusencia: motivosAusencia, ausenteMostrar: false, ausenteMotivo: null, ausenteMotivoOtro: '', auditoresModalSeleccionados: [],
                 generadoMostrar: false, generadoModulo: '', generadoCantidad: 0, generadoFecha: '', generadoTexto: '', generadoTextoHtml: '', generadoPuntos: [], generadoVecesCompartido: 0,
                 eliminarMostrar: false, eliminarModulo: 'pf', eliminarPassword: '',
                 mostrarAuditoresModal: false, auditoresModalTitulo: '', auditoresModalLista: [], auditoresModalBusqueda: '',
-                mostrarAuditadosModal: false, auditadosModalModulo: 'pf', auditadosModalBusqueda: '',
+                mostrarAuditadosModal: false, auditadosModalModulo: 'pf', auditadosModalBusqueda: '', auditadosModalEstado: 'auditado',
                 // Estado de Google Drive
                 driveConectado: false, driveConectando: false, driveUsuario: '', driveSincronizando: false,
                 driveUltimaSync: '', driveError: '', driveFileId: null, driveModifiedTimeConocido: null, driveExcelFileId: null,
@@ -1258,10 +1357,14 @@
                 notificacionesPushActivas: false,
             },
             computed: {
+                // Base de auditores compartida entre Puntos de Ventas y Centro Logístico
+                pfAuditores() { return this.auditores; },
+                clAuditores() { return this.auditores; },
+                cantidadAusentes() { return Object.keys(this.auditoresAusentes).length; },
                 auditoresModalListaFiltrada() { if (!this.auditoresModalBusqueda) return this.auditoresModalLista; const q = this.auditoresModalBusqueda.toLowerCase(); return this.auditoresModalLista.filter(a => obtenerNombreApellido(a).toLowerCase().includes(q)); },
                 listaAuditadosFiltrada() {
                     const fuente = this.auditadosModalModulo === 'pf' ? this.pfFilas : this.clFilas;
-                    const auditados = fuente.filter(f => f.estado === 'auditado');
+                    const auditados = fuente.filter(f => f.estado === this.auditadosModalEstado);
                     if (!this.auditadosModalBusqueda) return auditados;
                     const q = this.auditadosModalBusqueda.toLowerCase();
                     return auditados.filter(f => this.auditadosModalModulo === 'pf'
@@ -1278,7 +1381,8 @@
                         const coincidePDV = !this.pfBuscar || (f.NRO_SUCURSAL && String(f.NRO_SUCURSAL).toLowerCase().includes(this.pfBuscar.toLowerCase())) || (f.ESTR_DESCRIPCION && f.ESTR_DESCRIPCION.toLowerCase().includes(this.pfBuscar.toLowerCase()));
                         const coincideGrupo = !this.pfGrupo || (f.ESTR_GRUPOS && f.ESTR_GRUPOS.toLowerCase().includes(this.pfGrupo.toLowerCase()));
                         const coincideDias = this.filtrarPorDias(f, this.pfFiltroDias);
-                        return coincidePDV && coincideGrupo && coincideDias;
+                        const coincideEstado = !this.pfFiltroEstado || f.estado === this.pfFiltroEstado;
+                        return coincidePDV && coincideGrupo && coincideDias && coincideEstado;
                     });
                 },
                 pfPendientes() { return this.pfFilas.filter(f => f.estado === 'pendiente').length; }, pfAgendados() { return this.pfFilas.filter(f => f.estado === 'agendado').length; }, pfGenerados() { return this.pfFilas.filter(f => f.estado === 'generado').length; }, pfAuditados() { return this.pfFilas.filter(f => f.estado === 'auditado').length; }, pfReauditados() { return this.pfFilas.filter(f => f.estado === 'reauditado').length; }, pfSeleccionados() { return this.pfFilas.filter(f => f.seleccionado).length; },
@@ -1292,7 +1396,8 @@
                     return this.clFilas.filter(f => {
                         const coincideDep = !this.clBuscar || (f.DEPOSITO && String(f.DEPOSITO).toLowerCase().includes(this.clBuscar.toLowerCase()));
                         const coincideSec = !this.clSector || (f.SECTOR && String(f.SECTOR).toLowerCase().includes(this.clSector.toLowerCase()));
-                        return coincideDep && coincideSec && this.filtrarPorDias(f, this.clFiltroDias);
+                        const coincideEstado = !this.clFiltroEstado || f.estado === this.clFiltroEstado;
+                        return coincideDep && coincideSec && coincideEstado && this.filtrarPorDias(f, this.clFiltroDias);
                     });
                 },
                 clPendientes() { return this.clFilas.filter(f => f.estado === 'pendiente').length; }, clAgendados() { return this.clFilas.filter(f => f.estado === 'agendado').length; }, clGenerados() { return this.clFilas.filter(f => f.estado === 'generado').length; }, clAuditados() { return this.clFilas.filter(f => f.estado === 'auditado').length; }, clReauditados() { return this.clFilas.filter(f => f.estado === 'reauditado').length; }, clSeleccionados() { return this.clFilas.filter(f => f.seleccionado).length; },
@@ -1306,7 +1411,7 @@
             },
             watch: {
                 pfFilas: { handler() { this.guardarTodo(); }, deep: true }, clFilas: { handler() { this.guardarTodo(); }, deep: true },
-                pfAuditores: { handler() { this.guardarTodo(); }, deep: true }, clAuditores: { handler() { this.guardarTodo(); }, deep: true },
+                auditores: { handler() { this.guardarTodo(); }, deep: true }, auditoresAusentes: { handler() { this.guardarTodo(); }, deep: true },
                 pfBloqueado() { this.guardarTodo(); }, clBloqueado() { this.guardarTodo(); }, bitacora: { handler() { this.guardarTodo(); }, deep: true }, historialNotificaciones: { handler() { this.guardarTodo(); }, deep: true },
                 filasCriticas: { handler(nuevas) { this.procesarAlertasCriticas(nuevas); }, deep: true },
             },
@@ -1363,7 +1468,14 @@
                     if (!data) return;
                     try {
                         if (Array.isArray(data.pfFilas)) this.pfFilas = data.pfFilas; if (Array.isArray(data.clFilas)) this.clFilas = data.clFilas;
-                        if (Array.isArray(data.pfAuditores)) this.pfAuditores = data.pfAuditores; if (Array.isArray(data.clAuditores)) this.clAuditores = data.clAuditores;
+                        // Base de auditores compartida: si vienen datos viejos (pfAuditores/clAuditores separados) se fusionan sin duplicados
+                        if (Array.isArray(data.auditores) || Array.isArray(data.pfAuditores) || Array.isArray(data.clAuditores)) {
+                            const combinados = [...(Array.isArray(data.auditores) ? data.auditores : []), ...(Array.isArray(data.pfAuditores) ? data.pfAuditores : []), ...(Array.isArray(data.clAuditores) ? data.clAuditores : [])];
+                            const claves = new Set(); const unicos = [];
+                            combinados.forEach(a => { const c = normalizarClave(a); if (a && !claves.has(c)) { claves.add(c); unicos.push(a); } });
+                            this.auditores = unicos;
+                        }
+                        if (data.auditoresAusentes && typeof data.auditoresAusentes === 'object' && !Array.isArray(data.auditoresAusentes)) this.auditoresAusentes = data.auditoresAusentes;
                         if (typeof data.pfBloqueado === 'boolean') this.pfBloqueado = data.pfBloqueado; if (typeof data.clBloqueado === 'boolean') this.clBloqueado = data.clBloqueado;
                         if (Array.isArray(data.bitacora)) this.bitacora = data.bitacora; if (Array.isArray(data.historialNotificaciones)) this.historialNotificaciones = data.historialNotificaciones;
                         if (data.ultimoMensajePF) this.ultimoMensajePF = data.ultimoMensajePF; if (data.ultimoMensajeCL) this.ultimoMensajeCL = data.ultimoMensajeCL;
@@ -1387,7 +1499,7 @@
                     } catch (e) { console.error('Error al restaurar datos guardados:', e); }
                 },
                 construirPayload() {
-                    return { version: 1, guardadoEn: new Date().toISOString(), pfFilas: this.pfFilas, clFilas: this.clFilas, pfAuditores: this.pfAuditores, clAuditores: this.clAuditores, pfBloqueado: this.pfBloqueado, clBloqueado: this.clBloqueado, bitacora: this.bitacora, historialNotificaciones: this.historialNotificaciones, ultimoMensajePF: this.ultimoMensajePF, ultimoMensajeCL: this.ultimoMensajeCL };
+                    return { version: 1, guardadoEn: new Date().toISOString(), pfFilas: this.pfFilas, clFilas: this.clFilas, auditores: this.auditores, auditoresAusentes: this.auditoresAusentes, pfBloqueado: this.pfBloqueado, clBloqueado: this.clBloqueado, bitacora: this.bitacora, historialNotificaciones: this.historialNotificaciones, ultimoMensajePF: this.ultimoMensajePF, ultimoMensajeCL: this.ultimoMensajeCL };
                 },
                 guardarEnAlmacenamiento() {
                     this.guardando = true;
@@ -1667,20 +1779,64 @@
                     this.notificar('Desconectado de Google Drive. Los cambios ahora solo se guardan en este navegador.', 'warning');
                 },
                 mostrarListadoAuditores(modulo) {
-                    const lista = modulo === 'pf' ? this.pfAuditores : this.clAuditores;
-                    this.auditoresModalTitulo = modulo === 'pf' ? 'Puntos de Ventas' : 'Centro Logístico';
-                    this.auditoresModalLista = [...lista].sort((a, b) => obtenerNombreApellido(a).localeCompare(obtenerNombreApellido(b), 'es'));
-                    this.auditoresModalBusqueda = ''; this.mostrarAuditoresModal = true;
+                    this.auditoresModalTitulo = 'Base compartida (PDV + Centro Logístico)';
+                    this.auditoresModalLista = [...this.auditores].sort((a, b) => obtenerNombreApellido(a).localeCompare(obtenerNombreApellido(b), 'es'));
+                    this.auditoresModalBusqueda = ''; this.auditoresModalSeleccionados = []; this.mostrarAuditoresModal = true;
                 },
-                pfAuditoresDisponibles(fila) { return this.pfAuditores.filter(a => !fila.personasSeleccionadas.includes(a)); },
-                clAuditoresDisponibles(fila) { return this.clAuditores.filter(a => !fila.personasSeleccionadas.includes(a)); },
+                pfAuditoresDisponibles(fila) { return this.auditores.filter(a => !fila.personasSeleccionadas.includes(a) && !this.esAusente(a)); },
+                clAuditoresDisponibles(fila) { return this.auditores.filter(a => !fila.personasSeleccionadas.includes(a) && !this.esAusente(a)); },
+                // ==== Ausencias de auditores (base compartida) ====
+                esAusente(nombre) { return !!this.auditoresAusentes[normalizarClave(nombre)]; },
+                motivoAusencia(nombre) { const a = this.auditoresAusentes[normalizarClave(nombre)]; return a ? a.motivo : ''; },
+                toggleSeleccionAuditor(nombre) {
+                    const idx = this.auditoresModalSeleccionados.indexOf(nombre);
+                    if (idx !== -1) this.auditoresModalSeleccionados.splice(idx, 1); else this.auditoresModalSeleccionados.push(nombre);
+                },
+                todosAuditoresSeleccionados() {
+                    const visibles = this.auditoresModalListaFiltrada;
+                    return visibles.length > 0 && visibles.every(a => this.auditoresModalSeleccionados.includes(a));
+                },
+                toggleSeleccionTodosAuditores() {
+                    const visibles = this.auditoresModalListaFiltrada;
+                    if (this.todosAuditoresSeleccionados()) {
+                        this.auditoresModalSeleccionados = this.auditoresModalSeleccionados.filter(a => !visibles.includes(a));
+                    } else {
+                        visibles.forEach(a => { if (!this.auditoresModalSeleccionados.includes(a)) this.auditoresModalSeleccionados.push(a); });
+                    }
+                },
+                abrirAusenteModal() {
+                    if (this.auditoresModalSeleccionados.length === 0) { this.notificar('Seleccioná al menos un auditor.', 'warning'); return; }
+                    this.ausenteMotivo = null; this.ausenteMotivoOtro = ''; this.ausenteMostrar = true;
+                },
+                confirmarAusente() {
+                    if (!this.ausenteMotivo) return;
+                    let motivoTexto = this.motivosAusencia.find(m => m.valor === this.ausenteMotivo)?.texto || '';
+                    if (this.ausenteMotivo === 'otros') {
+                        const manual = this.ausenteMotivoOtro.trim();
+                        if (!manual) { this.notificar('Escribí el motivo de la ausencia.', 'warning'); return; }
+                        motivoTexto = manual;
+                    }
+                    const fecha = new Date().toISOString();
+                    this.auditoresModalSeleccionados.forEach(nombre => {
+                        this.$set(this.auditoresAusentes, normalizarClave(nombre), { nombre: nombre, motivo: motivoTexto, fecha: fecha });
+                    });
+                    this.registrarBitacora('GENERAL', 'Ausencia registrada', `${this.auditoresModalSeleccionados.length} auditor(es) marcados ausentes. Motivo: ${motivoTexto}.`);
+                    this.notificar(`${this.auditoresModalSeleccionados.length} auditor(es) marcados como ausentes (${motivoTexto}).`, 'success');
+                    this.auditoresModalSeleccionados = []; this.ausenteMostrar = false; this.ausenteMotivo = null; this.ausenteMotivoOtro = '';
+                },
+                quitarAusencia(nombre) {
+                    this.$delete(this.auditoresAusentes, normalizarClave(nombre));
+                    this.registrarBitacora('GENERAL', 'Reincorporación', `Se quitó la ausencia de ${nombre}.`);
+                    this.notificar(`${obtenerNombreApellido(nombre)} reincorporado.`, 'info');
+                },
                 filtrarPorDias(fila, filtro) {
                     if (!filtro) return true; if (fila.dias === null || fila.dias === undefined) return false;
                     switch (filtro) { case 'verde': return fila.dias < 150; case 'amarillo': return fila.dias >= 150 && fila.dias < 170; case 'naranja': return fila.dias >= 170 && fila.dias < 175; case 'rojo': return fila.dias >= 175 && fila.dias <= 180; case 'rojo-fuerte': return fila.dias > 180; default: return true; }
                 },
                 pfFiltrarPorDias(filtro) { this.pfFiltroDias = filtro; this.pfMostrarResumen = false; }, pfFiltrarPorGrupo(grupo) { this.pfGrupo = grupo === 'Sin grupo' ? '' : grupo; this.pfMostrarResumen = false; },
-                abrirListaAuditados(modulo) {
-                    this.auditadosModalModulo = modulo; this.auditadosModalBusqueda = '';
+                abrirListaAuditados(modulo) { this.abrirListaEstado(modulo, 'auditado'); },
+                abrirListaEstado(modulo, estado) {
+                    this.auditadosModalModulo = modulo; this.auditadosModalBusqueda = ''; this.auditadosModalEstado = estado;
                     if (modulo === 'pf') this.pfMostrarResumen = false; else this.clMostrarResumen = false;
                     this.mostrarAuditadosModal = true;
                 },
@@ -1778,6 +1934,10 @@
                 },
                 pfGenerar() {
                     const agendados = this.pfFilas.filter(f => f.seleccionado && f.estado === 'agendado'); if (agendados.length === 0) return;
+                    const agendadosCL = this.clFilas.filter(f => f.seleccionado && f.estado === 'agendado');
+                    if (agendadosCL.length > 0 && confirm(`Hay ${agendados.length} PDV(s) y ${agendadosCL.length} registro(s) de Centro Logístico agendados.\n\n¿Generar el aviso EN CONJUNTO (PDV + Centro Logístico)?\n\nAceptar = aviso conjunto · Cancelar = solo Puntos de Ventas`)) {
+                        this.generarConjunto(agendados, agendadosCL); return;
+                    }
                     agendados.forEach(f => f.estado = 'generado'); const texto = this.generarTexto(agendados, false);
                     this.mostrarGenerado(texto, 'Puntos de Ventas', agendados.length, agendados);
                 },
@@ -1864,8 +2024,18 @@
                 },
                 clGenerar() {
                     const agendados = this.clFilas.filter(f => f.seleccionado && f.estado === 'agendado'); if (agendados.length === 0) return;
+                    const agendadosPF = this.pfFilas.filter(f => f.seleccionado && f.estado === 'agendado');
+                    if (agendadosPF.length > 0 && confirm(`Hay ${agendadosPF.length} PDV(s) y ${agendados.length} registro(s) de Centro Logístico agendados.\n\n¿Generar el aviso EN CONJUNTO (PDV + Centro Logístico)?\n\nAceptar = aviso conjunto · Cancelar = solo Centro Logístico`)) {
+                        this.generarConjunto(agendadosPF, agendados); return;
+                    }
                     agendados.forEach(f => f.estado = 'generado'); const texto = this.generarTexto(agendados, true);
                     this.mostrarGenerado(texto, 'Centro Logístico', agendados.length, agendados);
+                },
+                generarConjunto(puntosPF, puntosCL) {
+                    [...puntosPF, ...puntosCL].forEach(f => f.estado = 'generado');
+                    const texto = this.generarTextoConjunto(puntosPF, puntosCL);
+                    this.mostrarGenerado(texto, 'PDV + Centro Logístico', puntosPF.length + puntosCL.length, [...puntosPF, ...puntosCL]);
+                    this.registrarBitacora('GENERAL', 'Aviso conjunto', `Cronograma conjunto generado: ${puntosPF.length} PDV(s) + ${puntosCL.length} registro(s) de CL.`);
                 },
                 clAbrirReauditar() { if (this.clFilas.filter(f => f.seleccionado && (f.estado === 'auditado' || f.estado === 'reauditado')).length === 0) return; this.reauditarModulo = 'cl'; this.reauditarMotivo = null; this.reauditarMostrar = true; },
                 clExportarCSV() { this.exportarCSV('cl'); },
@@ -1875,7 +2045,26 @@
                     if (!puntos || puntos.length === 0) return null;
                     const fechaStr = formatearFecha(getFechaManana());
                     let texto = `Buenas noches señores\n\nPaso el cronograma de trabajo para mañana ${fechaStr}\n\n`;
-                    
+                    texto += this.generarBloquePuntos(puntos, esCL);
+                    texto += 'Buen resto de jornada';
+                    return texto;
+                },
+                generarTextoConjunto(puntosPF, puntosCL) {
+                    const fechaStr = formatearFecha(getFechaManana());
+                    let texto = `Buenas noches señores\n\nPaso el cronograma de trabajo para mañana ${fechaStr}\n\n`;
+                    if (puntosPF && puntosPF.length > 0) {
+                        texto += `🏬 *PUNTOS DE VENTAS*\n\n`;
+                        texto += this.generarBloquePuntos(puntosPF, false);
+                    }
+                    if (puntosCL && puntosCL.length > 0) {
+                        texto += `🏭 *CENTRO LOGÍSTICO*\n\n`;
+                        texto += this.generarBloquePuntos(puntosCL, true);
+                    }
+                    texto += 'Buen resto de jornada';
+                    return texto;
+                },
+                generarBloquePuntos(puntos, esCL) {
+                    let texto = '';
                     const getNameWithWifi = (name, fila) => {
                         return (fila.auditoresWifi && fila.auditoresWifi.includes(name)) ? `${obtenerNombreApellido(name)} 📶` : obtenerNombreApellido(name);
                     };
@@ -1898,7 +2087,6 @@
                         if (auditores.length > 0) { auditores.forEach(a => { texto += `* ${getNameWithWifi(a, f)}\n`; }); } else { texto += `* (sin auditores adicionales)\n`; }
                         texto += '\n';
                     });
-                    texto += 'Buen resto de jornada';
                     return texto;
                 },
                 mostrarGenerado(texto, modulo, cantidad, puntos) {
@@ -1906,7 +2094,8 @@
                         modulo: modulo, cantidad: cantidad, fecha: formatearFecha(getFechaManana()),
                         texto: texto, textoHtml: escapeHtml(texto).replace(/\n/g, '<br>'), puntos: puntos, vecesCompartido: 0
                     };
-                    if (modulo.includes('Ventas')) { this.ultimoMensajePF = msgData; } else { this.ultimoMensajeCL = msgData; }
+                    if (modulo.includes('Ventas') || modulo.includes('PDV')) { this.ultimoMensajePF = msgData; }
+                    if (modulo.includes('Logístico')) { this.ultimoMensajeCL = msgData; }
                     this.restaurarMensaje(msgData);
                 },
                 restaurarMensaje(msgData) {
@@ -1920,15 +2109,21 @@
                 },
                 generadoCompartir() { 
                     this.generadoVecesCompartido++; 
-                    const isPF = this.generadoModulo.includes('Ventas');
-                    if (isPF && this.ultimoMensajePF) this.ultimoMensajePF.vecesCompartido = this.generadoVecesCompartido;
-                    if (!isPF && this.ultimoMensajeCL) this.ultimoMensajeCL.vecesCompartido = this.generadoVecesCompartido;
+                    const esPF = this.generadoModulo.includes('Ventas') || this.generadoModulo.includes('PDV');
+                    const esCL = this.generadoModulo.includes('Logístico');
+                    if (esPF && this.ultimoMensajePF) this.ultimoMensajePF.vecesCompartido = this.generadoVecesCompartido;
+                    if (esCL && this.ultimoMensajeCL) this.ultimoMensajeCL.vecesCompartido = this.generadoVecesCompartido;
                     window.open(`https://wa.me/?text=${encodeURIComponent(this.generadoTexto)}`, '_blank', 'noopener'); 
                 },
                 generadoMarcarAuditado() {
-                    const data = this.generadoModulo.includes('Ventas') ? this.pfFilas : this.clFilas;
+                    const data = [...this.pfFilas, ...this.clFilas];
                     this.generadoPuntos.forEach(f => { const fila = data.find(ff => ff._uid === f._uid); if (fila && fila.estado !== 'auditado') fila.estado = 'auditado'; });
                     this.generadoMostrar = false;
+                },
+                cantAuditoresNetos(fila) {
+                    const personas = fila.personasSeleccionadas || [];
+                    const supervisores = (fila.supervisoresSeleccionados && fila.supervisoresSeleccionados.length > 0) ? fila.supervisoresSeleccionados : (personas.length > 0 ? [personas[0]] : []);
+                    return personas.filter(p => !supervisores.includes(p)).length;
                 },
                 mostrarRuta(puntos, titulo) { this.rutaTitulo = titulo; this.rutaPuntos = [...puntos].sort((a, b) => parseInt(String(a.NRO_SUCURSAL || a.DEPOSITO).replace(/\D/g, '')) - parseInt(String(b.NRO_SUCURSAL || b.DEPOSITO).replace(/\D/g, ''))); this.rutaMostrar = true; },
                 reauditarConfirmar() {
@@ -1944,7 +2139,7 @@
                 abrirEliminarTodo(modulo) { this.eliminarModulo = modulo; this.eliminarPassword = ''; this.eliminarMostrar = true; },
                 confirmarEliminarTodo() {
                     if (this.eliminarPassword.trim().toUpperCase() !== 'ELIMINAR') return;
-                    if (this.eliminarModulo === 'pf') { this.pfFilas = []; this.pfAuditores = []; this.pfBloqueado = false; this.ultimoMensajePF = null; } else { this.clFilas = []; this.clAuditores = []; this.clBloqueado = false; this.ultimoMensajeCL = null; }
+                    if (this.eliminarModulo === 'pf') { this.pfFilas = []; this.pfBloqueado = false; this.ultimoMensajePF = null; } else { this.clFilas = []; this.clBloqueado = false; this.ultimoMensajeCL = null; }
                     this.eliminarMostrar = false; this.notificar('Datos eliminados.', 'success');
                 },
                 exportarCSV(modulo) {
