@@ -503,6 +503,7 @@
             <span style="font-size:0.8rem; color:#64748b;" v-if="driveSincronizando"><i class="fas fa-sync-alt fa-spin"></i> Sincronizando...</span>
             <span style="font-size:0.8rem; color:#64748b;" v-else-if="driveUltimaSync">Últ. sync: {{ driveUltimaSync }} · JSON + Excel</span>
             <div style="margin-left:auto; display:flex; gap:8px;">
+                <button class="btn btn-primary" @click="driveForzarGuardado" :disabled="driveSincronizando" title="Subir ahora mismo los datos y el Excel a Drive"><i class="fas fa-cloud-upload-alt"></i> Guardar ahora</button>
                 <button class="btn btn-outline" @click="driveCargarDatos(true)" title="Traer últimos cambios del equipo"><i class="fas fa-cloud-download-alt"></i> Actualizar</button>
                 <button class="btn btn-outline" @click="driveDesconectar">Desconectar</button>
             </div>
@@ -1156,9 +1157,11 @@
 <script src="https://cdn.jsdelivr.net/npm/vue@2.7.14/dist/vue.js"></script>
 <script>
     (function() {
-        let _uidCounter = 1;
-        function nextUid() { return _uidCounter++; }
-        function ajustarContadorUid(valor) { if (typeof valor === 'number' && valor >= _uidCounter) _uidCounter = valor + 1; }
+        // UID basado en tiempo: único incluso entre distintos dispositivos del equipo,
+        // para que al fusionar datos de Drive las filas nuevas (ej: reauditorías) no se pisen.
+        let _ultimoUid = 0;
+        function nextUid() { const base = Date.now() * 1000; _ultimoUid = base > _ultimoUid ? base : _ultimoUid + 1; return _ultimoUid; }
+        function ajustarContadorUid(valor) { if (typeof valor === 'number' && valor > _ultimoUid) _ultimoUid = valor; }
 
         const STORAGE_KEY = 'cronograma_inventarios_pf_v1';
 
@@ -1416,6 +1419,7 @@
                 filasCriticas: { handler(nuevas) { this.procesarAlertasCriticas(nuevas); }, deep: true },
             },
             created() {
+                this._uidsCreadosLocalmente = new Set();
                 this.cargarDesdeAlmacenamiento();
                 this.guardarDebounced = debounce(this.guardarEnAlmacenamiento, 450);
                 this.driveGuardarDebounced = debounce(this.driveGuardarDatos, 1500);
@@ -1434,6 +1438,7 @@
             },
             methods: {
                 obtenerNombreApellido(nombre) { return obtenerNombreApellido(nombre); },
+                marcarUidLocal(uid) { if (!this._uidsCreadosLocalmente) this._uidsCreadosLocalmente = new Set(); this._uidsCreadosLocalmente.add(uid); },
                 estadoTexto(estado) { return ESTADO_TEXTOS[estado] || ESTADO_TEXTOS.pendiente; },
                 toastIcono(tipo) { switch (tipo) { case 'success': return 'fas fa-check-circle'; case 'error': return 'fas fa-times-circle'; case 'warning': return 'fas fa-exclamation-triangle'; default: return 'fas fa-info-circle'; } },
                 notificar(mensaje, tipo) {
@@ -1466,8 +1471,21 @@
                 },
                 aplicarDatosCargados(data) {
                     if (!data) return;
+                    // Evita que aplicar datos traídos de Drive dispare un re-guardado inmediato
+                    // (eso hacía que los clientes se pisaran entre sí en cada sincronización).
+                    this._supresionGuardadoDrive = true;
                     try {
-                        if (Array.isArray(data.pfFilas)) this.pfFilas = data.pfFilas; if (Array.isArray(data.clFilas)) this.clFilas = data.clFilas;
+                        // Fusión anti-pisado: las filas remotas mandan, pero se conservan las filas
+                        // creadas localmente en esta sesión (ej: reauditorías) que todavía no llegaron a Drive.
+                        const uidsLocales = this._uidsCreadosLocalmente || new Set();
+                        const fusionarFilas = (locales, remotas) => {
+                            if (!Array.isArray(remotas)) return locales;
+                            const uidsRemotos = new Set(remotas.map(f => f._uid));
+                            const pendientesLocales = (locales || []).filter(f => f._uid && !uidsRemotos.has(f._uid) && uidsLocales.has(f._uid));
+                            return [...remotas, ...pendientesLocales];
+                        };
+                        if (Array.isArray(data.pfFilas)) this.pfFilas = fusionarFilas(this.pfFilas, data.pfFilas);
+                        if (Array.isArray(data.clFilas)) this.clFilas = fusionarFilas(this.clFilas, data.clFilas);
                         // Base de auditores compartida: si vienen datos viejos (pfAuditores/clAuditores separados) se fusionan sin duplicados
                         if (Array.isArray(data.auditores) || Array.isArray(data.pfAuditores) || Array.isArray(data.clAuditores)) {
                             const combinados = [...(Array.isArray(data.auditores) ? data.auditores : []), ...(Array.isArray(data.pfAuditores) ? data.pfAuditores : []), ...(Array.isArray(data.clAuditores) ? data.clAuditores : [])];
@@ -1497,6 +1515,7 @@
                         let maxIdBitacora = 0; this.bitacora.forEach(b => { if (b.id > maxIdBitacora) maxIdBitacora = b.id; }); this.bitacoraIdContador = maxIdBitacora + 1;
                         let maxIdNotif = 0; this.historialNotificaciones.forEach(n => { if (n.id > maxIdNotif) maxIdNotif = n.id; }); this.toastIdContador = maxIdNotif + 1;
                     } catch (e) { console.error('Error al restaurar datos guardados:', e); }
+                    this.$nextTick(() => { setTimeout(() => { this._supresionGuardadoDrive = false; }, 200); });
                 },
                 construirPayload() {
                     return { version: 1, guardadoEn: new Date().toISOString(), pfFilas: this.pfFilas, clFilas: this.clFilas, auditores: this.auditores, auditoresAusentes: this.auditoresAusentes, pfBloqueado: this.pfBloqueado, clBloqueado: this.clBloqueado, bitacora: this.bitacora, historialNotificaciones: this.historialNotificaciones, ultimoMensajePF: this.ultimoMensajePF, ultimoMensajeCL: this.ultimoMensajeCL };
@@ -1511,7 +1530,7 @@
                 guardarTodo() {
                     // Siempre guarda una copia local (rápida, offline) y, si hay Drive conectado, sincroniza con el equipo.
                     this.guardarDebounced();
-                    if (this.driveConectado) this.driveGuardarDebounced();
+                    if (this.driveConectado && !this._supresionGuardadoDrive) this.driveGuardarDebounced();
                 },
 
                 cambiarVistaDispositivo(modo) {
@@ -1621,10 +1640,20 @@
                 },
                 async driveManejarToken(resp) {
                     this.driveConectando = false;
-                    if (!resp || resp.error) { if (resp && resp.error !== 'immediate_failed_no_prompt') this.driveError = 'No se pudo conectar con Google Drive.'; return; }
+                    if (!resp || resp.error) {
+                        if (this._driveRenovandoToken) { this._driveRenovandoToken = false; this.driveConectado = false; this.driveError = 'La sesión de Google venció. Tocá "Conectar Google Drive" para seguir sincronizando.'; return; }
+                        if (resp && resp.error !== 'immediate_failed_no_prompt') this.driveError = 'No se pudo conectar con Google Drive.'; return;
+                    }
                     this._driveAccessToken = resp.access_token;
                     this.driveConectado = true;
                     this.driveError = '';
+                    if (this._driveRenovandoToken) {
+                        // Renovación silenciosa del token vencido: reintentamos lo que quedó pendiente.
+                        this._driveRenovandoToken = false;
+                        if (this._driveReintentarGuardado) { this._driveReintentarGuardado = false; this.driveGuardarDatos(); }
+                        else { this.driveCargarDatos(false); }
+                        return;
+                    }
                     try {
                         const userResp = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: this.driveHeaders() });
                         if (userResp.ok) { const u = await userResp.json(); this.driveUsuario = u.email || ''; }
@@ -1703,6 +1732,7 @@
                     this.driveSincronizando = true;
                     try {
                         const resp = await fetch(`${DRIVE_API}/files/${this.driveFileId}?alt=media`, { headers: this.driveHeaders() });
+                        if (resp.status === 401) { this.driveManejarNoAutorizado(false); this.driveSincronizando = false; return; }
                         if (resp.ok) {
                             const texto = await resp.text();
                             if (texto && texto.trim()) { const data = JSON.parse(texto); this.aplicarDatosCargados(data); this.guardarEnAlmacenamiento(); }
@@ -1718,30 +1748,72 @@
                     if (!this.driveConectado || !this.driveFileId) return;
                     this.driveSincronizando = true;
                     try {
+                        // Anti-pisado: si un compañero guardó después de nuestra última sync,
+                        // primero traemos y fusionamos sus cambios y recién después guardamos.
+                        try {
+                            const metaResp = await fetch(`${DRIVE_API}/files/${this.driveFileId}?fields=modifiedTime`, { headers: this.driveHeaders() });
+                            if (metaResp.status === 401) { this.driveManejarNoAutorizado(true); this.driveSincronizando = false; return; }
+                            if (metaResp.ok) {
+                                const meta = await metaResp.json();
+                                if (this.driveModifiedTimeConocido && meta.modifiedTime !== this.driveModifiedTimeConocido) {
+                                    await this.driveCargarDatos(false);
+                                }
+                            }
+                        } catch (e) {}
                         const payload = this.construirPayload();
                         const resp = await fetch(`${DRIVE_UPLOAD_API}/files/${this.driveFileId}?uploadType=media&fields=modifiedTime`, { method: 'PATCH', headers: { ...this.driveHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                        if (resp.ok) { const meta = await resp.json(); this.driveModifiedTimeConocido = meta.modifiedTime; this.driveUltimaSync = new Date().toLocaleTimeString('es-ES'); this.driveError = ''; }
+                        if (resp.ok) {
+                            const meta = await resp.json(); this.driveModifiedTimeConocido = meta.modifiedTime; this.driveUltimaSync = new Date().toLocaleTimeString('es-ES'); this.driveError = '';
+                            // Lo local ya quedó en Drive: no hay filas pendientes de sincronizar.
+                            if (this._uidsCreadosLocalmente) this._uidsCreadosLocalmente.clear();
+                        }
+                        else if (resp.status === 401) { this.driveManejarNoAutorizado(true); }
                         else { this.driveError = 'No se pudo guardar en Drive (¿perdiste la conexión o el acceso al archivo?).'; }
                     } catch (e) { this.driveError = 'No se pudo guardar en Drive.'; console.error(e); }
                     this.driveSincronizando = false;
                     this.driveGuardarExcel();
                 },
+                async driveForzarGuardado() {
+                    await this.driveGuardarDatos();
+                    if (!this.driveError) this.notificar('Datos y Excel actualizados en Drive.', 'success');
+                },
+                driveManejarNoAutorizado(reintentarGuardado) {
+                    // El token de Google vence (~1 hora): lo renovamos en silencio y reintentamos.
+                    if (this._driveRenovandoToken) return;
+                    this._driveRenovandoToken = true;
+                    this._driveReintentarGuardado = !!reintentarGuardado;
+                    if (this._driveTokenClient) { this._driveTokenClient.requestAccessToken({ prompt: '' }); }
+                    else { this.driveConectado = false; this.driveError = 'La sesión de Google venció. Volvé a conectar Drive.'; this._driveRenovandoToken = false; }
+                },
                 filaAExcelPF(f) {
-                    return [f.NRO_SUCURSAL || '', f.ESTR_COD || '', f.ESTR_DESCRIPCION || '', f.UBIC_TIPO || '', f.UBIC_ABREVIATURA || '', f.AÑO_APER || '', f.Ultimo_Inventario || '', f.dias !== null && f.dias !== undefined ? f.dias : '', f.horaConvocatoria || '', f.horaSalida || '', f.CLUS_DESCRIPCION || '', f.CANT_GONDOLAS || '', f.ESTR_GRUPOS || '', f.NOMBRE_ENCARGADO || '', f.NOMBRE_SUPERVISOR || '', (f.personasSeleccionadas || []).join(', '), (f.supervisoresSeleccionados || []).join(', '), f.seleccionado ? 'Sí' : 'No', this.estadoTexto(f.estado), f.motivoReauditoria || ''];
+                    return [f.NRO_SUCURSAL || '', f.ESTR_COD || '', f.ESTR_DESCRIPCION || '', f.UBIC_TIPO || '', f.UBIC_ABREVIATURA || '', f.AÑO_APER || '', f.Ultimo_Inventario || '', f.dias !== null && f.dias !== undefined ? f.dias : '', f.horaConvocatoria || '', f.horaSalida || '', f.CLUS_DESCRIPCION || '', f.CANT_GONDOLAS || '', f.ESTR_GRUPOS || '', f.NOMBRE_ENCARGADO || '', f.NOMBRE_SUPERVISOR || '', (f.personasSeleccionadas || []).join(', '), (f.supervisoresSeleccionados || []).join(', '), this.cantAuditoresNetos(f), f.seleccionado ? 'Sí' : 'No', this.estadoTexto(f.estado), f.motivoReauditoria || '', f.esReauditoria ? 'Sí' : 'No'];
                 },
                 filaAExcelCL(f) {
-                    return [f.DEPOSITO || '', f.SECTOR || '', f.Ultimo_Inventario || '', f.dias !== null && f.dias !== undefined ? f.dias : '', f.horaConvocatoria || '', f.horaSalida || '', (f.personasSeleccionadas || []).join(', '), (f.supervisoresSeleccionados || []).join(', '), f.seleccionado ? 'Sí' : 'No', this.estadoTexto(f.estado), f.motivoReauditoria || ''];
+                    return [f.DEPOSITO || '', f.SECTOR || '', f.Ultimo_Inventario || '', f.dias !== null && f.dias !== undefined ? f.dias : '', f.horaConvocatoria || '', f.horaSalida || '', (f.personasSeleccionadas || []).join(', '), (f.supervisoresSeleccionados || []).join(', '), this.cantAuditoresNetos(f), f.seleccionado ? 'Sí' : 'No', this.estadoTexto(f.estado), f.motivoReauditoria || '', f.esReauditoria ? 'Sí' : 'No'];
                 },
                 driveConstruirLibroExcel() {
                     const wb = XLSX.utils.book_new();
-                    const headersPF = ['NRO_SUCURSAL', 'ESTR_COD', 'ESTR_DESCRIPCION', 'UBIC_TIPO', 'UBIC_ABREVIATURA', 'AÑO_APER', 'Ultimo Inventario', 'Días', 'Convocatoria', 'Salida', 'CLUS_DESCRIPCION', 'CANT_GONDOLAS', 'ESTR_GRUPOS', 'Encargado', 'Supervisor', 'Auditores Asignados', 'Supervisores Asignados', 'Seleccionado', 'Estado', 'Motivo Reauditoría'];
+                    const headersPF = ['NRO_SUCURSAL', 'ESTR_COD', 'ESTR_DESCRIPCION', 'UBIC_TIPO', 'UBIC_ABREVIATURA', 'AÑO_APER', 'Ultimo Inventario', 'Días', 'Convocatoria', 'Salida', 'CLUS_DESCRIPCION', 'CANT_GONDOLAS', 'ESTR_GRUPOS', 'Encargado', 'Supervisor', 'Auditores Asignados', 'Supervisores Asignados', 'Cant. Auditores (sin Sup.)', 'Seleccionado', 'Estado', 'Motivo Reauditoría', 'Es Reauditoría'];
                     const filasPF = [headersPF, ...this.pfFilas.map(f => this.filaAExcelPF(f))];
                     const wsPF = XLSX.utils.aoa_to_sheet(filasPF);
                     XLSX.utils.book_append_sheet(wb, wsPF, 'Puntos de Venta');
-                    const headersCL = ['DEPOSITO', 'SECTOR', 'Ultimo Inventario', 'Días', 'Convocatoria', 'Salida', 'Auditores Asignados', 'Supervisores Asignados', 'Seleccionado', 'Estado', 'Motivo Reauditoría'];
+                    const headersCL = ['DEPOSITO', 'SECTOR', 'Ultimo Inventario', 'Días', 'Convocatoria', 'Salida', 'Auditores Asignados', 'Supervisores Asignados', 'Cant. Auditores (sin Sup.)', 'Seleccionado', 'Estado', 'Motivo Reauditoría', 'Es Reauditoría'];
                     const filasCL = [headersCL, ...this.clFilas.map(f => this.filaAExcelCL(f))];
                     const wsCL = XLSX.utils.aoa_to_sheet(filasCL);
                     XLSX.utils.book_append_sheet(wb, wsCL, 'Centro Logístico');
+                    // Hoja dedicada a las reauditorías: quedan registradas aparte y no se mezclan/pisan con el resto.
+                    const headersRe = ['Módulo', 'Identificador', 'Descripción / Sector', 'Motivo Reauditoría', 'Estado', 'Último Inventario', 'Días', 'Auditores', 'Supervisores', 'Cant. Auditores (sin Sup.)'];
+                    const filaRe = (f, modulo) => [modulo, modulo === 'PDV' ? (f.NRO_SUCURSAL || 'S/N') : (f.DEPOSITO || 'S/N'), modulo === 'PDV' ? (f.ESTR_DESCRIPCION || '') : (f.SECTOR || ''), f.motivoReauditoria || '', this.estadoTexto(f.estado), f.Ultimo_Inventario || '', f.dias !== null && f.dias !== undefined ? f.dias : '', (f.personasSeleccionadas || []).join(', '), (f.supervisoresSeleccionados || []).join(', '), this.cantAuditoresNetos(f)];
+                    const filasRe = [headersRe,
+                        ...this.pfFilas.filter(f => f.esReauditoria).map(f => filaRe(f, 'PDV')),
+                        ...this.clFilas.filter(f => f.esReauditoria).map(f => filaRe(f, 'Centro Logístico'))];
+                    const wsRe = XLSX.utils.aoa_to_sheet(filasRe);
+                    XLSX.utils.book_append_sheet(wb, wsRe, 'Reauditorías');
+                    // Hoja con la base compartida de auditores y sus ausencias.
+                    const headersAud = ['Auditor', 'Estado', 'Motivo Ausencia'];
+                    const filasAud = [headersAud, ...[...this.auditores].sort((a, b) => obtenerNombreApellido(a).localeCompare(obtenerNombreApellido(b), 'es')).map(a => [a, this.esAusente(a) ? 'Ausente' : 'Activo', this.motivoAusencia(a) || ''])];
+                    const wsAud = XLSX.utils.aoa_to_sheet(filasAud);
+                    XLSX.utils.book_append_sheet(wb, wsAud, 'Auditores');
                     return wb;
                 },
                 async driveGuardarExcel() {
@@ -1753,8 +1825,11 @@
                         const wb = this.driveConstruirLibroExcel();
                         const arrayBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
                         const blob = new Blob([arrayBuffer], { type: excelMime });
-                        await fetch(`${DRIVE_UPLOAD_API}/files/${this.driveExcelFileId}?uploadType=media`, { method: 'PATCH', headers: { ...this.driveHeaders(), 'Content-Type': excelMime }, body: blob });
-                    } catch (e) { console.error('No se pudo actualizar el Excel en Drive:', e); }
+                        const resp = await fetch(`${DRIVE_UPLOAD_API}/files/${this.driveExcelFileId}?uploadType=media`, { method: 'PATCH', headers: { ...this.driveHeaders(), 'Content-Type': excelMime }, body: blob });
+                        if (resp.status === 401) { this.driveManejarNoAutorizado(true); return; }
+                        if (!resp.ok) { this.driveError = 'El Excel de Drive no se pudo actualizar (código ' + resp.status + ').'; return; }
+                        this.driveUltimaSync = new Date().toLocaleTimeString('es-ES');
+                    } catch (e) { this.driveError = 'El Excel de Drive no se pudo actualizar.'; console.error('No se pudo actualizar el Excel en Drive:', e); }
                 },
                 driveIniciarPolling() {
                     if (this._drivePollId) clearInterval(this._drivePollId);
@@ -1851,6 +1926,7 @@
                 pfAgregarFila() {
                     if (this.pfBloqueado) return;
                     this.pfFilas.push({ _uid: nextUid(), NRO_SUCURSAL: '', ESTR_COD: '', ESTR_DESCRIPCION: '', UBIC_TIPO: '', UBIC_ABREVIATURA: '', AÑO_APER: '', Ultimo_Inventario: '', CLUS_DESCRIPCION: '', CANT_GONDOLAS: '', ESTR_GRUPOS: '', ENCAR_FCH_NACI: '', ANTIGUEDAD_ENCAR: '', ESTR_DESCRI: '', NOMBRE_ENCARGADO: '', NOMBRE_SUPERVISOR: '', NOMBRE_ADMINITRATIVO: '', personasSeleccionadas: [], auditoresWifi: [], personaTemp: '', supervisorTemp: '', horaConvocatoria: '07:30', horaSalida: '17:30', dias: null, colorClase: '', seleccionado: true, estado: 'pendiente', motivoReauditoria: null, supervisoresSeleccionados: [], esReauditoria: false, tieneReauditoria: false, origenUid: null, reauditoriaUid: null });
+                    this.marcarUidLocal(this.pfFilas[this.pfFilas.length - 1]._uid);
                     this.registrarBitacora('PF', 'Alta manual', 'Se agregó un nuevo PDV.');
                 },
                 pfEliminarFila(index) {
@@ -1911,7 +1987,7 @@
                                 let fechaConvertida = row['Ultimo Inventario'] ? convertirFecha(row['Ultimo Inventario']) : '';
                                 const fila = { _uid: nextUid(), NRO_SUCURSAL: row['NRO_SUCURSAL'] || '', ESTR_COD: row['ESTR_COD'] || '', ESTR_DESCRIPCION: row['ESTR_DESCRIPCION'] || row['Columna1'] || '', UBIC_TIPO: row['UBIC_TIPO'] || '', UBIC_ABREVIATURA: row['UBIC_ABREVIATURA'] || '', AÑO_APER: row['AÑO_APER'] || '', Ultimo_Inventario: fechaConvertida, CLUS_DESCRIPCION: row['CLUS_DESCRIPCION'] || '', CANT_GONDOLAS: row['CANT_GONDOLAS'] || '', ESTR_GRUPOS: row['ESTR_GRUPOS'] || '', ENCAR_FCH_NACI: row['ENCAR_FCH_NACI'] || '', ANTIGUEDAD_ENCAR: row['ANTIGUEDAD_ENCAR'] || '', ESTR_DESCRI: row['ESTR_DESCRI'] || '', NOMBRE_ENCARGADO: row['NOMBRE_ENCARGADO'] || '', NOMBRE_SUPERVISOR: row['NOMBRE_SUPERVISOR'] || '', NOMBRE_ADMINITRATIVO: row['NOMBRE_ADMINITRATIVO'] || '', personasSeleccionadas: [], auditoresWifi: [], personaTemp: '', supervisorTemp: '', horaConvocatoria: row['HORA_CONVOCATORIA'] || '07:30', horaSalida: row['HORA_SALIDA'] || '17:30', seleccionado: true, estado: 'pendiente', motivoReauditoria: null, supervisoresSeleccionados: [], esReauditoria: false, tieneReauditoria: false, origenUid: null, reauditoriaUid: null };
                                 fila.dias = calcularDiasDesde(fila.Ultimo_Inventario); fila.colorClase = getColorClase(fila.dias);
-                                this.pfFilas.push(fila); importados++;
+                                this.marcarUidLocal(fila._uid); this.pfFilas.push(fila); importados++;
                             });
                             this.pfBloqueado = true; this.notificar(`${importados} registros importados.`, 'success');
                         } catch (error) { this.notificar('Error al leer el archivo.', 'error'); }
@@ -1949,6 +2025,7 @@
                 clAgregarFila() {
                     if (this.clBloqueado) return;
                     this.clFilas.push({ _uid: nextUid(), DEPOSITO: '', SECTOR: '', Ultimo_Inventario: '', personasSeleccionadas: [], auditoresWifi: [], personaTemp: '', supervisorTemp: '', horaConvocatoria: '07:30', horaSalida: '17:30', dias: null, colorClase: '', seleccionado: true, estado: 'pendiente', motivoReauditoria: null, supervisoresSeleccionados: [], esReauditoria: false, tieneReauditoria: false, origenUid: null, reauditoriaUid: null });
+                    this.marcarUidLocal(this.clFilas[this.clFilas.length - 1]._uid);
                 },
                 clEliminarFila(index) {
                     if (confirm('¿Estás seguro de eliminar este registro?')) {
@@ -2004,7 +2081,7 @@
                                 let fechaConvertida = row['Ultimo Inventario'] ? convertirFecha(row['Ultimo Inventario']) : '';
                                 const fila = { _uid: nextUid(), DEPOSITO: row['DEPOSITO'] || '', SECTOR: row['SECTOR'] || '', Ultimo_Inventario: fechaConvertida, personasSeleccionadas: [], auditoresWifi: [], personaTemp: '', supervisorTemp: '', horaConvocatoria: row['HORA_CONVOCATORIA'] || '07:30', horaSalida: row['HORA_SALIDA'] || '17:30', seleccionado: true, estado: 'pendiente', motivoReauditoria: null, supervisoresSeleccionados: [], esReauditoria: false, tieneReauditoria: false, origenUid: null, reauditoriaUid: null };
                                 fila.dias = calcularDiasDesde(fila.Ultimo_Inventario); fila.colorClase = getColorClase(fila.dias);
-                                this.clFilas.push(fila);
+                                this.marcarUidLocal(fila._uid); this.clFilas.push(fila);
                             });
                             this.clBloqueado = true;
                         } catch (error) {}
@@ -2132,7 +2209,7 @@
                     const motivoTexto = this.motivosReauditoria.find(m => m.valor === this.reauditarMotivo)?.texto || '';
                     seleccionados.forEach(original => {
                         const nuevo = { ...original, _uid: nextUid(), personasSeleccionadas: [...original.personasSeleccionadas], supervisoresSeleccionados: [...original.supervisoresSeleccionados], auditoresWifi: [...(original.auditoresWifi || [])], personaTemp: '', supervisorTemp: '', seleccionado: true, estado: 'pendiente', motivoReauditoria: motivoTexto, esReauditoria: true, tieneReauditoria: false, origenUid: original._uid, reauditoriaUid: null, Ultimo_Inventario: '', dias: null, colorClase: '', horaConvocatoria: '07:30', horaSalida: '17:30' };
-                        data.push(nuevo); original.tieneReauditoria = true; original.reauditoriaUid = nuevo._uid;
+                        this.marcarUidLocal(nuevo._uid); data.push(nuevo); original.tieneReauditoria = true; original.reauditoriaUid = nuevo._uid;
                     });
                     this.reauditarMostrar = false; this.reauditarMotivo = null; this.notificar('Reauditorías generadas.', 'success');
                 },
