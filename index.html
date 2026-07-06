@@ -121,62 +121,80 @@
         .btn {
             background: white;
             border: 1px solid #d1d9e6;
-            padding: 7px 16px;
+            padding: 9px 18px;
             border-radius: 10px;
             font-weight: 600;
-            font-size: 0.78rem;
+            font-size: 0.8rem;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            justify-content: center;
+            gap: 7px;
             color: #1e293b;
             cursor: pointer;
-            transition: 0.2s;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease, filter 0.15s ease;
+            box-shadow: 0 1px 2px rgba(15,23,42,0.06);
             white-space: nowrap;
+            min-height: 38px;
+            line-height: 1.1;
+            letter-spacing: 0.1px;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            user-select: none;
         }
         .btn i {
             font-size: 0.85rem;
         }
         .btn:hover {
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            box-shadow: 0 6px 16px rgba(15,23,42,0.10);
+            border-color: #b9c4d6;
+        }
+        .btn:active {
+            transform: translateY(0);
+            filter: brightness(0.96);
+            box-shadow: 0 1px 2px rgba(15,23,42,0.08);
+        }
+        .btn:focus-visible {
+            outline: 2px solid #2563eb;
+            outline-offset: 2px;
         }
         .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
             transform: none;
             box-shadow: none;
+            filter: none;
         }
-        .btn-primary { background: #1d4ed8; border-color: #1d4ed8; color: white; }
+        .btn-primary { background: linear-gradient(180deg, #2f6df0, #1d4ed8); border-color: #1d4ed8; color: white; }
         .btn-primary i { color: white; }
-        .btn-primary:hover { background: #2563eb; }
-        .btn-success { background: #0b8a4b; border-color: #0b8a4b; color: white; }
+        .btn-primary:hover { background: linear-gradient(180deg, #3f7bf3, #2563eb); box-shadow: 0 6px 16px rgba(37,99,235,0.32); }
+        .btn-success { background: linear-gradient(180deg, #10a75c, #0b8a4b); border-color: #0b8a4b; color: white; }
         .btn-success i { color: white; }
-        .btn-success:hover { background: #0f9e58; }
-        .btn-danger { background: #dc2626; border-color: #dc2626; color: white; }
+        .btn-success:hover { background: linear-gradient(180deg, #13b866, #0f9e58); box-shadow: 0 6px 16px rgba(11,138,75,0.32); }
+        .btn-danger { background: linear-gradient(180deg, #e94848, #dc2626); border-color: #dc2626; color: white; }
         .btn-danger i { color: white; }
-        .btn-danger:hover { background: #ef4444; }
-        .btn-outline { background: transparent; border: 1px solid #cbd5e1; }
-        .btn-outline:hover { background: #f1f5f9; }
-        .btn-info { background: #0891b2; border-color: #0891b2; color: white; }
+        .btn-danger:hover { background: linear-gradient(180deg, #f05f5f, #ef4444); box-shadow: 0 6px 16px rgba(220,38,38,0.32); }
+        .btn-outline { background: transparent; border: 1px solid #cbd5e1; box-shadow: none; }
+        .btn-outline:hover { background: #f1f5f9; box-shadow: none; border-color: #94a3b8; }
+        .btn-info { background: linear-gradient(180deg, #0aa4c4, #0891b2); border-color: #0891b2; color: white; }
         .btn-info i { color: white; }
-        .btn-info:hover { background: #0e7490; }
-        .btn-generar { background: #7c3aed; border-color: #7c3aed; color: white; }
+        .btn-info:hover { background: linear-gradient(180deg, #12b6d7, #0e9ec2); box-shadow: 0 6px 16px rgba(8,145,178,0.32); }
+        .btn-generar { background: linear-gradient(180deg, #8d63f7, #7c3aed); border-color: #7c3aed; color: white; }
         .btn-generar i { color: white; }
-        .btn-generar:hover { background: #8b5cf6; }
-        .btn-agendar { background: #f59e0b; border-color: #f59e0b; color: white; }
+        .btn-generar:hover { background: linear-gradient(180deg, #9c76f8, #8b5cf6); box-shadow: 0 6px 16px rgba(124,58,237,0.32); }
+        .btn-agendar { background: linear-gradient(180deg, #fbb023, #f59e0b); border-color: #f59e0b; color: white; }
         .btn-agendar i { color: white; }
-        .btn-agendar:hover { background: #d97706; }
-        .btn-ruta { background: #ec4899; border-color: #ec4899; color: white; }
+        .btn-agendar:hover { background: linear-gradient(180deg, #fcbf47, #f6a90f); box-shadow: 0 6px 16px rgba(245,158,11,0.32); }
+        .btn-ruta { background: linear-gradient(180deg, #f0579f, #ec4899); border-color: #ec4899; color: white; }
         .btn-ruta i { color: white; }
-        .btn-ruta:hover { background: #db2777; }
-        .btn-reauditar { background: #ef4444; border-color: #ef4444; color: white; }
+        .btn-ruta:hover { background: linear-gradient(180deg, #f373ae, #ef62a3); box-shadow: 0 6px 16px rgba(236,72,153,0.32); }
+        .btn-reauditar { background: linear-gradient(180deg, #f15c5c, #ef4444); border-color: #ef4444; color: white; }
         .btn-reauditar i { color: white; }
-        .btn-reauditar:hover { background: #dc2626; }
-        .btn-file { background: #8b5cf6; border-color: #8b5cf6; color: white; }
+        .btn-reauditar:hover { background: linear-gradient(180deg, #f47272, #f15c5c); box-shadow: 0 6px 16px rgba(239,68,68,0.32); }
+        .btn-file { background: linear-gradient(180deg, #9c7cf5, #8b5cf6); border-color: #8b5cf6; color: white; }
         .btn-file i { color: white; }
-        .btn-file:hover { background: #7c3aed; }
-        .btn-sm { padding: 3px 10px; font-size: 0.65rem; border-radius: 6px; }
+        .btn-file:hover { background: linear-gradient(180deg, #ab8ff7, #9c7cf5); box-shadow: 0 6px 16px rgba(139,92,246,0.32); }
+        .btn-sm { padding: 5px 12px; font-size: 0.68rem; border-radius: 8px; min-height: 30px; }
         .badge { background: #e2e8f0; padding: 3px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 600; }
         .badge-primary { background: #dbeafe; color: #1e40af; }
         .badge-success { background: #bbf7d0; color: #166534; }
@@ -362,8 +380,11 @@
         .toast-anim-enter { opacity: 0; transform: translateX(30px); }
         .toast-anim-leave-to { opacity: 0; transform: translateX(30px) scale(0.95); }
         .toast-anim-move { transition: transform 0.2s ease; }
-        .header-icon-btn { position: relative; background: #f1f5f9; border: 1px solid #e2e8f0; width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #475569; font-size: 1.05rem; transition: 0.2s; flex-shrink: 0; }
-        .header-icon-btn:hover { background: #e2e8f0; color: #1e293b; }
+        .header-icon-btn { position: relative; background: #f1f5f9; border: 1px solid #e2e8f0; width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #475569; font-size: 1.05rem; transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease; flex-shrink: 0; touch-action: manipulation; }
+        .header-icon-btn:hover { background: #e2e8f0; color: #1e293b; transform: translateY(-1px); box-shadow: 0 4px 10px rgba(15,23,42,0.10); }
+        .header-icon-btn:active { transform: translateY(0); filter: brightness(0.97); }
+        .header-icon-btn:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+        @media (max-width: 768px) { .header-icon-btn { width: 42px; height: 42px; } }
         .header-icon-btn .badge-count { position: absolute; top: -6px; right: -6px; background: #dc2626; color: white; font-size: 0.6rem; font-weight: 700; min-width: 18px; height: 18px; border-radius: 20px; display: flex; align-items: center; justify-content: center; padding: 0 4px; border: 2px solid white; }
         .notif-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-bottom: 1px solid #eef2f8; font-size: 0.8rem; }
         .notif-item:last-child { border-bottom: none; }
@@ -392,6 +413,11 @@
             .modal-content { padding: 18px; }
             h1 { font-size: 1.4rem; }
             .tab-btn { padding: 8px 12px; font-size: 0.8rem; }
+            .btn { min-height: 42px; padding: 10px 16px; font-size: 0.82rem; }
+            .btn-sm { min-height: 34px; padding: 6px 12px; font-size: 0.7rem; }
+            .toolbar .btn, .footer-actions .btn, .bitacora-toolbar .btn { flex: 1 1 auto; }
+            .footer-actions { flex-direction: column; align-items: stretch; gap: 10px; }
+            .footer-actions .btn { width: 100%; }
         }
 
         /* ===== Switch encendido/apagado: Móvil (apagado) / Escritorio (encendido) ===== */
@@ -421,6 +447,10 @@
         body.forzar-movil .tab-btn { padding: 7px 10px !important; font-size: 0.75rem !important; }
         body.forzar-movil .drive-bar { flex-direction: column !important; align-items: stretch !important; }
         body.forzar-movil table { min-width: 900px !important; }
+        body.forzar-movil .btn { min-height: 42px !important; padding: 10px 16px !important; font-size: 0.8rem !important; width: 100% !important; }
+        body.forzar-movil .btn-sm { min-height: 34px !important; width: auto !important; padding: 6px 12px !important; }
+        body.forzar-movil .footer-actions { flex-direction: column !important; align-items: stretch !important; gap: 10px !important; }
+        body.forzar-movil .footer-actions > * { width: 100% !important; }
 
         body.forzar-escritorio .app-container { max-width: 1500px !important; padding: 24px !important; margin: 0 auto !important; border: none !important; box-shadow: none !important; }
         body.forzar-escritorio .toolbar { padding: 14px 20px !important; flex-direction: row !important; }
@@ -428,6 +458,7 @@
         body.forzar-escritorio h1 { font-size: 1.8rem !important; flex-wrap: nowrap !important; }
         body.forzar-escritorio .tab-btn { padding: 10px 18px !important; font-size: 0.9rem !important; }
         body.forzar-escritorio .drive-bar { flex-direction: row !important; }
+        body.forzar-escritorio .btn { min-height: 38px !important; padding: 9px 18px !important; width: auto !important; }
         .logo-upload {
             width: 44px; height: 44px; border-radius: 12px; background: #eef2ff; border: 2px dashed #c7d2fe;
             display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden;
@@ -1148,6 +1179,7 @@
                 <div class="bitacora-item" v-for="b in bitacoraFiltrada" :key="b.id">
                     <div class="bitacora-top"><span class="bitacora-modulo" :class="b.modulo.toLowerCase()">{{ b.modulo }}</span><span class="bitacora-accion">{{ b.accion }}</span><span class="bitacora-fecha">{{ formatearFechaHora(b.fecha) }}</span></div>
                     <div class="bitacora-detalle">{{ b.detalle }}</div>
+                    <div class="bitacora-usuario" style="font-size:0.68rem; color:#2563eb; font-weight:600; margin-top:2px;"><i class="fas fa-user" style="margin-right:4px;"></i>{{ b.usuario || 'Sin conectar (local)' }}</div>
                 </div>
             </div>
         </div>
@@ -1453,15 +1485,16 @@
                 limpiarNotificaciones() { if (confirm('¿Vaciar todo el historial de notificaciones?')) { this.historialNotificaciones = []; } },
                 formatearFechaHora(fecha) { return formatearFechaHora(fecha); },
                 registrarBitacora(modulo, accion, detalle) {
-                    this.bitacora.unshift({ id: this.bitacoraIdContador++, fecha: new Date().toISOString(), modulo: modulo, accion: accion, detalle: detalle });
+                    const usuario = this.driveConectado && this.driveUsuario ? this.driveUsuario : 'Sin conectar (local)';
+                    this.bitacora.unshift({ id: this.bitacoraIdContador++, fecha: new Date().toISOString(), modulo: modulo, accion: accion, detalle: detalle, usuario: usuario });
                     if (this.bitacora.length > 1000) this.bitacora.length = 1000;
                 },
                 limpiarBitacora() { if (confirm('¿Vaciar toda la bitácora de auditoría? Esta acción no se puede deshacer.')) { this.bitacora = []; this.notificar('Bitácora vaciada.', 'info'); } },
                 exportarBitacoraCSV() {
                     if (this.bitacora.length === 0) { this.notificar('No hay registros en la bitácora para exportar.', 'warning'); return; }
                     const escaparCsv = (valor) => `"${String(valor === null || valor === undefined ? '' : valor).replace(/"/g, '""')}"`;
-                    let csv = '\uFEFF' + ['Fecha', 'Módulo', 'Acción', 'Detalle'].map(escaparCsv).join(',') + '\n';
-                    this.bitacora.forEach(b => { csv += [formatearFechaHora(b.fecha), b.modulo, b.accion, b.detalle].map(escaparCsv).join(',') + '\n'; });
+                    let csv = '\uFEFF' + ['Fecha', 'Módulo', 'Acción', 'Detalle', 'Usuario (correo)'].map(escaparCsv).join(',') + '\n';
+                    this.bitacora.forEach(b => { csv += [formatearFechaHora(b.fecha), b.modulo, b.accion, b.detalle, b.usuario || 'Sin conectar (local)'].map(escaparCsv).join(',') + '\n'; });
                     const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
                     link.download = `bitacora_auditoria_${new Date().toISOString().slice(0, 10)}.csv`; document.body.appendChild(link); link.click(); document.body.removeChild(link);
                 },
@@ -1814,6 +1847,11 @@
                     const filasAud = [headersAud, ...[...this.auditores].sort((a, b) => obtenerNombreApellido(a).localeCompare(obtenerNombreApellido(b), 'es')).map(a => [a, this.esAusente(a) ? 'Ausente' : 'Activo', this.motivoAusencia(a) || ''])];
                     const wsAud = XLSX.utils.aoa_to_sheet(filasAud);
                     XLSX.utils.book_append_sheet(wb, wsAud, 'Auditores');
+                    // Hoja de bitácora de auditoría: registra quién (correo conectado) hizo cada cambio.
+                    const headersBit = ['Fecha', 'Módulo', 'Acción', 'Detalle', 'Usuario (correo)'];
+                    const filasBit = [headersBit, ...this.bitacora.map(b => [formatearFechaHora(b.fecha), b.modulo, b.accion, b.detalle, b.usuario || 'Sin conectar (local)'])];
+                    const wsBit = XLSX.utils.aoa_to_sheet(filasBit);
+                    XLSX.utils.book_append_sheet(wb, wsBit, 'Bitácora');
                     return wb;
                 },
                 async driveGuardarExcel() {
