@@ -2161,6 +2161,7 @@
                     const fechaStr = formatearFecha(getFechaManana());
                     let texto = `Buenas noches señores\n\nPaso el cronograma de trabajo para mañana ${fechaStr}\n\n`;
                     texto += this.generarBloquePuntos(puntos, esCL);
+                    texto += this.generarBloqueAusentes();
                     texto += 'Buen resto de jornada';
                     return texto;
                 },
@@ -2175,8 +2176,19 @@
                         texto += `🏭 *CENTRO LOGÍSTICO*\n\n`;
                         texto += this.generarBloquePuntos(puntosCL, true);
                     }
+                    texto += this.generarBloqueAusentes();
                     texto += 'Buen resto de jornada';
                     return texto;
+                },
+                generarBloqueAusentes() {
+                    const ausentes = Object.values(this.auditoresAusentes || {});
+                    if (!ausentes.length) return '';
+                    let bloque = `🚫 *Auditores ausentes*\n`;
+                    ausentes
+                        .sort((a, b) => obtenerNombreApellido(a.nombre).localeCompare(obtenerNombreApellido(b.nombre), 'es'))
+                        .forEach(a => { bloque += `${obtenerNombreApellido(a.nombre)} - ${a.motivo || 'Sin motivo especificado'}\n`; });
+                    bloque += '\n';
+                    return bloque;
                 },
                 generarBloquePuntos(puntos, esCL) {
                     let texto = '';
