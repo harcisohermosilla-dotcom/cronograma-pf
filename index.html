@@ -107,6 +107,32 @@
         .tab-content.active {
             display: block;
         }
+        .tab-content.bloqueo-sin-drive {
+            position: relative;
+            pointer-events: none;
+            user-select: none;
+            filter: grayscale(0.25);
+            opacity: 0.62;
+        }
+        .tab-content.bloqueo-sin-drive::before {
+            content: "🔒 Conectá Google Drive para habilitar la edición";
+            position: sticky;
+            top: 10px;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            background: #1e293b;
+            color: white;
+            padding: 10px 16px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+            box-shadow: 0 8px 20px rgba(15,23,42,0.25);
+        }
         .toolbar {
             display: flex;
             flex-wrap: wrap;
@@ -540,6 +566,9 @@
             </div>
         </template>
         <div v-if="driveError" style="width:100%; color:#dc2626; font-size:0.8rem; margin-top:6px;"><i class="fas fa-exclamation-triangle"></i> {{ driveError }}</div>
+        <div v-if="!driveConectado" style="width:100%; margin-top:6px; background:#fef3c7; color:#92400e; border:1px solid #fde68a; border-radius:10px; padding:8px 12px; font-size:0.78rem; font-weight:600; display:flex; align-items:center; gap:8px;">
+            <i class="fas fa-lock"></i> Modo solo lectura: conectá Google Drive para poder crear, editar, generar o eliminar registros.
+        </div>
     </div>
 
     <!-- Tabs -->
@@ -553,7 +582,7 @@
     </div>
 
     <!-- Módulo PF -->
-    <div class="tab-content" :class="{ active: tabActivo === 'pf' }">
+    <div class="tab-content" :class="{ active: tabActivo === 'pf', 'bloqueo-sin-drive': !driveConectado }">
         <div class="toolbar">
             <span class="badge badge-primary"><i class="far fa-clock"></i> Límite: 180 días</span>
             <div class="search-container">
@@ -754,7 +783,7 @@
     </div>
 
     <!-- Módulo CL (Centro Logístico) -->
-    <div class="tab-content" :class="{ active: tabActivo === 'cl' }">
+    <div class="tab-content" :class="{ active: tabActivo === 'cl', 'bloqueo-sin-drive': !driveConectado }">
         <div class="toolbar">
             <span class="badge badge-primary"><i class="far fa-clock"></i> Límite: 180 días</span>
             <div class="search-container">
@@ -1489,6 +1518,14 @@
                     this.bitacora.unshift({ id: this.bitacoraIdContador++, fecha: new Date().toISOString(), modulo: modulo, accion: accion, detalle: detalle, usuario: usuario });
                     if (this.bitacora.length > 1000) this.bitacora.length = 1000;
                 },
+                // Segunda capa de seguridad: bloquea cualquier modificación de datos si no hay una cuenta de Google Drive conectada.
+                noDrive() {
+                    if (!this.driveConectado) {
+                        this.notificar('Conectá Google Drive antes de crear, editar, generar o eliminar registros.', 'warning');
+                        return true;
+                    }
+                    return false;
+                },
                 limpiarBitacora() { if (confirm('¿Vaciar toda la bitácora de auditoría? Esta acción no se puede deshacer.')) { this.bitacora = []; this.notificar('Bitácora vaciada.', 'info'); } },
                 exportarBitacoraCSV() {
                     if (this.bitacora.length === 0) { this.notificar('No hay registros en la bitácora para exportar.', 'warning'); return; }
@@ -1922,6 +1959,7 @@
                     this.ausenteMotivo = null; this.ausenteMotivoOtro = ''; this.ausenteMostrar = true;
                 },
                 confirmarAusente() {
+                    if (this.noDrive()) return;
                     if (!this.ausenteMotivo) return;
                     let motivoTexto = this.motivosAusencia.find(m => m.valor === this.ausenteMotivo)?.texto || '';
                     if (this.ausenteMotivo === 'otros') {
@@ -1938,6 +1976,7 @@
                     this.auditoresModalSeleccionados = []; this.ausenteMostrar = false; this.ausenteMotivo = null; this.ausenteMotivoOtro = '';
                 },
                 quitarAusencia(nombre) {
+                    if (this.noDrive()) return;
                     this.$delete(this.auditoresAusentes, normalizarClave(nombre));
                     this.registrarBitacora('GENERAL', 'Reincorporación', `Se quitó la ausencia de ${nombre}.`);
                     this.notificar(`${obtenerNombreApellido(nombre)} reincorporado.`, 'info');
@@ -1955,6 +1994,7 @@
                 },
                 clFiltrarPorDias(filtro) { this.clFiltroDias = filtro; this.clMostrarResumen = false; }, clFiltrarPorSector(sector) { this.clSector = sector === 'Sin sector' ? '' : sector; this.clMostrarResumen = false; },
                 toggleWifi(fila, nombre) {
+                    if (this.noDrive()) return;
                     if (!fila.auditoresWifi) this.$set(fila, 'auditoresWifi', []);
                     const idx = fila.auditoresWifi.indexOf(nombre);
                     if (idx !== -1) fila.auditoresWifi.splice(idx, 1); else fila.auditoresWifi.push(nombre);
@@ -1962,12 +2002,14 @@
 
                 // Métodos PF
                 pfAgregarFila() {
+                    if (this.noDrive()) return;
                     if (this.pfBloqueado) return;
                     this.pfFilas.push({ _uid: nextUid(), NRO_SUCURSAL: '', ESTR_COD: '', ESTR_DESCRIPCION: '', UBIC_TIPO: '', UBIC_ABREVIATURA: '', AÑO_APER: '', Ultimo_Inventario: '', CLUS_DESCRIPCION: '', CANT_GONDOLAS: '', ESTR_GRUPOS: '', ENCAR_FCH_NACI: '', ANTIGUEDAD_ENCAR: '', ESTR_DESCRI: '', NOMBRE_ENCARGADO: '', NOMBRE_SUPERVISOR: '', NOMBRE_ADMINITRATIVO: '', personasSeleccionadas: [], auditoresWifi: [], personaTemp: '', supervisorTemp: '', horaConvocatoria: '07:30', horaSalida: '17:30', dias: null, colorClase: '', seleccionado: true, estado: 'pendiente', motivoReauditoria: null, supervisoresSeleccionados: [], esReauditoria: false, tieneReauditoria: false, origenUid: null, reauditoriaUid: null });
                     this.marcarUidLocal(this.pfFilas[this.pfFilas.length - 1]._uid);
                     this.registrarBitacora('PF', 'Alta manual', 'Se agregó un nuevo PDV.');
                 },
                 pfEliminarFila(index) {
+                    if (this.noDrive()) return;
                     if (confirm('¿Estás seguro de eliminar este PDV?')) {
                         const fila = this.pfFilasFiltradas[index]; const realIndex = this.pfFilas.findIndex(f => f._uid === fila._uid);
                         if (realIndex !== -1) { this.registrarBitacora('PF', 'Eliminación', `PDV eliminado: ${fila.NRO_SUCURSAL || 'S/N'}.`); this.pfFilas.splice(realIndex, 1); }
@@ -1976,10 +2018,12 @@
                 pfCalcularDias(index) { const fila = this.pfFilasFiltradas[index]; const dias = calcularDiasDesde(fila.Ultimo_Inventario); fila.dias = dias; fila.colorClase = getColorClase(dias); },
                 pfToggleTodos() { this.pfFilasFiltradas.forEach(f => f.seleccionado = this.pfSeleccionarTodos); },
                 pfAgregarPersona(index, nombre) {
+                    if (this.noDrive()) return;
                     const fila = this.pfFilasFiltradas[index]; if (!fila || !nombre) return;
                     if (!fila.personasSeleccionadas.includes(nombre)) { fila.personasSeleccionadas.push(nombre); if (fila.supervisoresSeleccionados.length === 0) fila.supervisoresSeleccionados.push(nombre); }
                 },
                 pfQuitarPersona(index) {
+                    if (this.noDrive()) return;
                     const fila = this.pfFilasFiltradas[index];
                     if (fila.personasSeleccionadas.length > 0) {
                         const removido = fila.personasSeleccionadas.pop();
@@ -1988,6 +2032,7 @@
                     }
                 },
                 pfAgregarSupervisor(index) {
+                    if (this.noDrive()) return;
                     const fila = this.pfFilasFiltradas[index]; if (!fila) return; const valor = fila.supervisorTemp;
                     if (valor && fila.personasSeleccionadas.includes(valor) && !fila.supervisoresSeleccionados.includes(valor)) fila.supervisoresSeleccionados.push(valor);
                     fila.supervisorTemp = '';
@@ -1995,6 +2040,7 @@
                 pfQuitarSupervisor(index, nombre) { const fila = this.pfFilasFiltradas[index]; if (!fila) return; const idx = fila.supervisoresSeleccionados.indexOf(nombre); if (idx !== -1) fila.supervisoresSeleccionados.splice(idx, 1); },
                 pfSupervisoresDisponibles(fila) { return fila.personasSeleccionadas.filter(p => !fila.supervisoresSeleccionados.includes(p)); },
                 pfCambiarEstado(index) {
+                    if (this.noDrive()) return;
                     const fila = this.pfFilasFiltradas[index]; if (!fila) return;
                     if (fila.estado === 'pendiente' || fila.estado === 'agendado') fila.motivoReauditoria = null;
                     this.registrarBitacora('PF', 'Cambio manual de estado', `PDV ${fila.NRO_SUCURSAL || 'S/N'} cambiado a: ${this.estadoTexto(fila.estado)}.`); this.notificar(`Estado actualizado.`, 'info');
@@ -2033,10 +2079,12 @@
                     reader.readAsArrayBuffer(file); event.target.value = '';
                 },
                 pfAgregarAuditor() {
+                    if (this.noDrive()) return;
                     const nombre = this.pfNuevoAuditorNombre.trim(); if (!nombre) return;
                     if (!this.pfAuditores.some(a => normalizarClave(a) === normalizarClave(nombre))) { this.pfAuditores.push(nombre); this.pfNuevoAuditorNombre = ''; this.notificar('Auditor agregado.', 'success'); } else this.notificar('Ya existe.', 'warning');
                 },
                 pfToggleAgendar() {
+                    if (this.noDrive()) return;
                     const pendientes = this.pfFilas.filter(f => f.seleccionado && f.estado === 'pendiente');
                     if (pendientes.length > 0) {
                         if (pendientes.some(f => f.personasSeleccionadas.length === 0)) { this.notificar('Existen puntos sin auditores.', 'warning'); return; }
@@ -2047,6 +2095,7 @@
                     }
                 },
                 pfGenerar() {
+                    if (this.noDrive()) return;
                     const agendados = this.pfFilas.filter(f => f.seleccionado && f.estado === 'agendado'); if (agendados.length === 0) return;
                     const agendadosCL = this.clFilas.filter(f => f.seleccionado && f.estado === 'agendado');
                     if (agendadosCL.length > 0 && confirm(`Hay ${agendados.length} PDV(s) y ${agendadosCL.length} registro(s) de Centro Logístico agendados.\n\n¿Generar el aviso EN CONJUNTO (PDV + Centro Logístico)?\n\nAceptar = aviso conjunto · Cancelar = solo Puntos de Ventas`)) {
@@ -2061,11 +2110,13 @@
 
                 // Métodos CL
                 clAgregarFila() {
+                    if (this.noDrive()) return;
                     if (this.clBloqueado) return;
                     this.clFilas.push({ _uid: nextUid(), DEPOSITO: '', SECTOR: '', Ultimo_Inventario: '', personasSeleccionadas: [], auditoresWifi: [], personaTemp: '', supervisorTemp: '', horaConvocatoria: '07:30', horaSalida: '17:30', dias: null, colorClase: '', seleccionado: true, estado: 'pendiente', motivoReauditoria: null, supervisoresSeleccionados: [], esReauditoria: false, tieneReauditoria: false, origenUid: null, reauditoriaUid: null });
                     this.marcarUidLocal(this.clFilas[this.clFilas.length - 1]._uid);
                 },
                 clEliminarFila(index) {
+                    if (this.noDrive()) return;
                     if (confirm('¿Estás seguro de eliminar este registro?')) {
                         const fila = this.clFilasFiltradas[index]; const realIndex = this.clFilas.findIndex(f => f._uid === fila._uid);
                         if (realIndex !== -1) { this.clFilas.splice(realIndex, 1); }
@@ -2074,10 +2125,12 @@
                 clCalcularDias(index) { const fila = this.clFilasFiltradas[index]; fila.dias = calcularDiasDesde(fila.Ultimo_Inventario); fila.colorClase = getColorClase(fila.dias); },
                 clToggleTodos() { this.clFilasFiltradas.forEach(f => f.seleccionado = this.clSeleccionarTodos); },
                 clAgregarPersona(index, nombre) {
+                    if (this.noDrive()) return;
                     const fila = this.clFilasFiltradas[index]; if (!fila || !nombre) return;
                     if (!fila.personasSeleccionadas.includes(nombre)) { fila.personasSeleccionadas.push(nombre); if (fila.supervisoresSeleccionados.length === 0) fila.supervisoresSeleccionados.push(nombre); }
                 },
                 clQuitarPersona(index) {
+                    if (this.noDrive()) return;
                     const fila = this.clFilasFiltradas[index];
                     if (fila.personasSeleccionadas.length > 0) {
                         const removido = fila.personasSeleccionadas.pop();
@@ -2086,6 +2139,7 @@
                     }
                 },
                 clAgregarSupervisor(index) {
+                    if (this.noDrive()) return;
                     const fila = this.clFilasFiltradas[index]; if (!fila) return; const valor = fila.supervisorTemp;
                     if (valor && fila.personasSeleccionadas.includes(valor) && !fila.supervisoresSeleccionados.includes(valor)) fila.supervisoresSeleccionados.push(valor);
                     fila.supervisorTemp = '';
@@ -2093,6 +2147,7 @@
                 clQuitarSupervisor(index, nombre) { const fila = this.clFilasFiltradas[index]; if (!fila) return; const idx = fila.supervisoresSeleccionados.indexOf(nombre); if (idx !== -1) fila.supervisoresSeleccionados.splice(idx, 1); },
                 clSupervisoresDisponibles(fila) { return fila.personasSeleccionadas.filter(p => !fila.supervisoresSeleccionados.includes(p)); },
                 clCambiarEstado(index) {
+                    if (this.noDrive()) return;
                     const fila = this.clFilasFiltradas[index]; if (!fila) return;
                     if (fila.estado === 'pendiente' || fila.estado === 'agendado') fila.motivoReauditoria = null;
                 },
@@ -2127,10 +2182,12 @@
                     reader.readAsArrayBuffer(file); event.target.value = '';
                 },
                 clAgregarAuditor() {
+                    if (this.noDrive()) return;
                     const nombre = this.clNuevoAuditorNombre.trim(); if (!nombre) return;
                     if (!this.clAuditores.some(a => normalizarClave(a) === normalizarClave(nombre))) { this.clAuditores.push(nombre); this.clNuevoAuditorNombre = ''; }
                 },
                 clToggleAgendar() {
+                    if (this.noDrive()) return;
                     const pendientes = this.clFilas.filter(f => f.seleccionado && f.estado === 'pendiente');
                     if (pendientes.length > 0) { pendientes.forEach(f => f.estado = 'agendado'); } else {
                         const agendados = this.clFilas.filter(f => f.seleccionado && f.estado === 'agendado');
@@ -2138,6 +2195,7 @@
                     }
                 },
                 clGenerar() {
+                    if (this.noDrive()) return;
                     const agendados = this.clFilas.filter(f => f.seleccionado && f.estado === 'agendado'); if (agendados.length === 0) return;
                     const agendadosPF = this.pfFilas.filter(f => f.seleccionado && f.estado === 'agendado');
                     if (agendadosPF.length > 0 && confirm(`Hay ${agendadosPF.length} PDV(s) y ${agendados.length} registro(s) de Centro Logístico agendados.\n\n¿Generar el aviso EN CONJUNTO (PDV + Centro Logístico)?\n\nAceptar = aviso conjunto · Cancelar = solo Centro Logístico`)) {
@@ -2147,6 +2205,7 @@
                     this.mostrarGenerado(texto, 'Centro Logístico', agendados.length, agendados);
                 },
                 generarConjunto(puntosPF, puntosCL) {
+                    if (this.noDrive()) return;
                     [...puntosPF, ...puntosCL].forEach(f => f.estado = 'generado');
                     const texto = this.generarTextoConjunto(puntosPF, puntosCL);
                     this.mostrarGenerado(texto, 'PDV + Centro Logístico', puntosPF.length + puntosCL.length, [...puntosPF, ...puntosCL]);
@@ -2243,6 +2302,7 @@
                     window.open(`https://wa.me/?text=${encodeURIComponent(this.generadoTexto)}`, '_blank', 'noopener'); 
                 },
                 generadoMarcarAuditado() {
+                    if (this.noDrive()) return;
                     const data = [...this.pfFilas, ...this.clFilas];
                     this.generadoPuntos.forEach(f => { const fila = data.find(ff => ff._uid === f._uid); if (fila && fila.estado !== 'auditado') fila.estado = 'auditado'; });
                     this.generadoMostrar = false;
@@ -2254,6 +2314,7 @@
                 },
                 mostrarRuta(puntos, titulo) { this.rutaTitulo = titulo; this.rutaPuntos = [...puntos].sort((a, b) => parseInt(String(a.NRO_SUCURSAL || a.DEPOSITO).replace(/\D/g, '')) - parseInt(String(b.NRO_SUCURSAL || b.DEPOSITO).replace(/\D/g, ''))); this.rutaMostrar = true; },
                 reauditarConfirmar() {
+                    if (this.noDrive()) return;
                     if (!this.reauditarMotivo) return; const data = this.reauditarModulo === 'pf' ? this.pfFilas : this.clFilas;
                     const seleccionados = data.filter(f => f.seleccionado && (f.estado === 'auditado' || f.estado === 'reauditado'));
                     const motivoTexto = this.motivosReauditoria.find(m => m.valor === this.reauditarMotivo)?.texto || '';
@@ -2265,6 +2326,7 @@
                 },
                 abrirEliminarTodo(modulo) { this.eliminarModulo = modulo; this.eliminarPassword = ''; this.eliminarMostrar = true; },
                 confirmarEliminarTodo() {
+                    if (this.noDrive()) return;
                     if (this.eliminarPassword.trim().toUpperCase() !== 'ELIMINAR') return;
                     if (this.eliminarModulo === 'pf') { this.pfFilas = []; this.pfBloqueado = false; this.ultimoMensajePF = null; } else { this.clFilas = []; this.clBloqueado = false; this.ultimoMensajeCL = null; }
                     this.eliminarMostrar = false; this.notificar('Datos eliminados.', 'success');
