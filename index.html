@@ -1039,7 +1039,7 @@
                         <div class="nombre" :style="esAusente(auditor) ? 'color:#991b1b;' : ''">{{ auditor }}</div>
                     </div>
                     <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
-                        <span v-if="esAusente(auditor)" class="stats-badge" style="background:#fee2e2; color:#991b1b;" :title="'Motivo: ' + motivoAusencia(auditor)">🚫 Ausente · {{ motivoAusencia(auditor) }}</span>
+                        <span v-if="esAusente(auditor)" class="stats-badge" style="background:#fee2e2; color:#991b1b;" :title="'Motivo: ' + motivoAusencia(auditor) + (hastaAusencia(auditor) ? ' · Hasta el ' + formatearFechaViaje(hastaAusencia(auditor)) : '')">🚫 Ausente · {{ motivoAusencia(auditor) }}<template v-if="hastaAusencia(auditor)"> · hasta {{ formatearFechaViaje(hastaAusencia(auditor)) }}</template></span>
                         <button v-if="esAusente(auditor)" class="btn btn-outline btn-sm" style="padding:2px 8px; font-size:0.6rem;" @click="quitarAusencia(auditor)" title="Reincorporar auditor"><i class="fas fa-user-check"></i> Reincorporar</button>
                     </div>
                 </div>
@@ -1088,8 +1088,13 @@
                 <label style="font-weight:600; font-size:0.8rem; display:block; margin-bottom:5px;">Escribe el motivo:</label>
                 <input type="text" class="search-auditor" v-model="ausenteMotivoOtro" placeholder="Ej: capacitación, trámite personal..." @keyup.enter="confirmarAusente">
             </div>
+            <div v-if="ausenteMotivo === 'reposo'" style="margin:10px 0; background:#fff7ed; border:1px solid #fed7aa; border-radius:10px; padding:10px 12px;">
+                <label style="font-weight:600; font-size:0.8rem; display:block; margin-bottom:5px; color:#9a3412;"><i class="fas fa-calendar-day"></i> ¿Hasta qué fecha estará de reposo?</label>
+                <input type="date" class="search-auditor" v-model="ausenteHastaFecha" :min="hoyIso()">
+                <p style="font-size:0.65rem; color:#b45309; margin-top:4px;"><i class="fas fa-info-circle"></i> Esta fecha queda registrada junto al auditor y se guarda en el archivo (hoja "Auditores" del Excel).</p>
+            </div>
             <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
-                <button class="btn btn-danger" @click="confirmarAusente" :disabled="!ausenteMotivo || (ausenteMotivo === 'otros' && !ausenteMotivoOtro.trim())"><i class="fas fa-check"></i> Confirmar Ausencia</button>
+                <button class="btn btn-danger" @click="confirmarAusente" :disabled="!ausenteMotivo || (ausenteMotivo === 'otros' && !ausenteMotivoOtro.trim()) || (ausenteMotivo === 'reposo' && !ausenteHastaFecha)"><i class="fas fa-check"></i> Confirmar Ausencia</button>
                 <button class="btn btn-outline" @click="ausenteMostrar = false">Cancelar</button>
             </div>
         </div>
@@ -1274,10 +1279,12 @@
                         <div class="viaje-auditores-barra">
                             <i class="fas fa-user-check" style="color:#9333ea;"></i>
                             <span style="font-size:0.7rem; font-weight:700; color:#6b21a8;">Auditores del viaje:</span>
+                            <input type="text" v-model="viajeAuditorBusqueda" placeholder="🔍 Buscar auditor..." @keyup.enter="viajeAgregarPrimerFiltrado" style="padding:4px 10px; border:1px solid #d8b4fe; border-radius:8px; font-size:0.7rem; width:170px; outline:none;" title="Escribí para filtrar la lista de auditores. Enter agrega el primero de la lista.">
                             <select v-model="viajeAuditorTemp" @change="viajeAgregarAuditor">
-                                <option value="">+ Asignar auditor...</option>
-                                <option v-for="a in viajeAuditoresDisponibles" :key="a" :value="a">{{ a }}</option>
+                                <option value="">+ Asignar auditor... ({{ viajeAuditoresDisponiblesFiltrados.length }})</option>
+                                <option v-for="a in viajeAuditoresDisponiblesFiltrados" :key="a" :value="a">{{ a }}</option>
                             </select>
+                            <span v-if="viajeAuditorBusqueda.trim() && viajeAuditoresDisponiblesFiltrados.length === 0" style="font-size:0.65rem; color:#b91c1c;">Sin coincidencias</span>
                             <span class="viaje-tag-auditor" v-for="a in viajeAuditoresSeleccionados" :key="a">
                                 {{ obtenerNombreApellido(a) }}
                                 <button @click="viajeQuitarAuditor(a)" title="Quitar auditor del viaje"><i class="fas fa-times"></i></button>
@@ -1658,8 +1665,8 @@
                 motivosReauditoria: motivosReauditoria, reauditarMostrar: false, reauditarModulo: 'pf', reauditarMotivo: null, rutaMostrar: false, rutaTitulo: '', rutaPuntos: [], rutaTiempo: 0,
                 rutaTab: 'agendados', viajeBusqueda: '', viajeDepartamento: '', viajeCiudad: '', viajeSeleccionUids: [], viajeIdaVuelta: true, viajeFactorRuta: 1.3, viajeVelocidad: 60,
                 viajesGuardados: [], viajeNombre: '', viajeFecha: '', viajeEditandoId: null, viajeHistorialBusqueda: '', viajeHistorialDetalleId: null,
-                viajeAuditoresSeleccionados: [], viajeAuditorTemp: '',
-                motivosAusencia: motivosAusencia, ausenteMostrar: false, ausenteMotivo: null, ausenteMotivoOtro: '', auditoresModalSeleccionados: [],
+                viajeAuditoresSeleccionados: [], viajeAuditorTemp: '', viajeAuditorBusqueda: '',
+                motivosAusencia: motivosAusencia, ausenteMostrar: false, ausenteMotivo: null, ausenteMotivoOtro: '', ausenteHastaFecha: '', auditoresModalSeleccionados: [],
                 generadoMostrar: false, generadoModulo: '', generadoCantidad: 0, generadoFecha: '', generadoTexto: '', generadoTextoHtml: '', generadoPuntos: [], generadoVecesCompartido: 0,
                 eliminarMostrar: false, eliminarModulo: 'pf', eliminarPassword: '',
                 mostrarAuditoresModal: false, auditoresModalTitulo: '', auditoresModalLista: [], auditoresModalBusqueda: '',
@@ -1719,6 +1726,13 @@
                 viajeAuditoresDisponibles() {
                     // Reutiliza la base compartida de auditores, excluyendo ausentes y ya asignados al viaje
                     return this.auditores.filter(a => !this.viajeAuditoresSeleccionados.includes(a) && !this.esAusente(a));
+                },
+                viajeAuditoresDisponiblesFiltrados() {
+                    // Buscador de auditores del viaje: filtra la lista disponible por el texto ingresado (sin distinguir mayúsculas/acentos)
+                    const q = this.viajeAuditorBusqueda.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                    const base = [...this.viajeAuditoresDisponibles].sort((a, b) => obtenerNombreApellido(a).localeCompare(obtenerNombreApellido(b), 'es'));
+                    if (!q) return base;
+                    return base.filter(a => String(a).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(q));
                 },
                 viajesGuardadosFiltrados() {
                     // Ordenados por fecha programada (los sin fecha al final) y filtrados por búsqueda
@@ -2204,8 +2218,8 @@
                     const wsRe = XLSX.utils.aoa_to_sheet(filasRe);
                     XLSX.utils.book_append_sheet(wb, wsRe, 'Reauditorías');
                     // Hoja con la base compartida de auditores y sus ausencias.
-                    const headersAud = ['Auditor', 'Estado', 'Motivo Ausencia'];
-                    const filasAud = [headersAud, ...[...this.auditores].sort((a, b) => obtenerNombreApellido(a).localeCompare(obtenerNombreApellido(b), 'es')).map(a => [a, this.esAusente(a) ? 'Ausente' : 'Activo', this.motivoAusencia(a) || ''])];
+                    const headersAud = ['Auditor', 'Estado', 'Motivo Ausencia', 'Ausente / Reposo hasta'];
+                    const filasAud = [headersAud, ...[...this.auditores].sort((a, b) => obtenerNombreApellido(a).localeCompare(obtenerNombreApellido(b), 'es')).map(a => [a, this.esAusente(a) ? 'Ausente' : 'Activo', this.motivoAusencia(a) || '', this.hastaAusencia(a) ? this.formatearFechaViaje(this.hastaAusencia(a)) : ''])];
                     const wsAud = XLSX.utils.aoa_to_sheet(filasAud);
                     XLSX.utils.book_append_sheet(wb, wsAud, 'Auditores');
                     // Hoja de viajes agendados: un renglón por viaje con todos sus datos.
@@ -2280,6 +2294,7 @@
                 // ==== Ausencias de auditores (base compartida) ====
                 esAusente(nombre) { return !!this.auditoresAusentes[normalizarClave(nombre)]; },
                 motivoAusencia(nombre) { const a = this.auditoresAusentes[normalizarClave(nombre)]; return a ? a.motivo : ''; },
+                hastaAusencia(nombre) { const a = this.auditoresAusentes[normalizarClave(nombre)]; return a && a.hastaFecha ? a.hastaFecha : ''; },
                 toggleSeleccionAuditor(nombre) {
                     const idx = this.auditoresModalSeleccionados.indexOf(nombre);
                     if (idx !== -1) this.auditoresModalSeleccionados.splice(idx, 1); else this.auditoresModalSeleccionados.push(nombre);
@@ -2298,8 +2313,9 @@
                 },
                 abrirAusenteModal() {
                     if (this.auditoresModalSeleccionados.length === 0) { this.notificar('Seleccioná al menos un auditor.', 'warning'); return; }
-                    this.ausenteMotivo = null; this.ausenteMotivoOtro = ''; this.ausenteMostrar = true;
+                    this.ausenteMotivo = null; this.ausenteMotivoOtro = ''; this.ausenteHastaFecha = ''; this.ausenteMostrar = true;
                 },
+                hoyIso() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; },
                 confirmarAusente() {
                     if (this.noDrive()) return;
                     if (!this.ausenteMotivo) return;
@@ -2309,18 +2325,26 @@
                         if (!manual) { this.notificar('Escribí el motivo de la ausencia.', 'warning'); return; }
                         motivoTexto = manual;
                     }
+                    let hastaFecha = '';
+                    if (this.ausenteMotivo === 'reposo') {
+                        if (!this.ausenteHastaFecha) { this.notificar('Indicá hasta qué fecha estará de reposo.', 'warning'); return; }
+                        hastaFecha = this.ausenteHastaFecha;
+                    }
                     const fecha = new Date().toISOString();
                     this.auditoresModalSeleccionados.forEach(nombre => {
-                        this.$set(this.auditoresAusentes, normalizarClave(nombre), { nombre: nombre, motivo: motivoTexto, fecha: fecha });
+                        this.$set(this.auditoresAusentes, normalizarClave(nombre), { nombre: nombre, motivo: motivoTexto, fecha: fecha, hastaFecha: hastaFecha });
                     });
-                    this.registrarBitacora('GENERAL', 'Ausencia registrada', `${this.auditoresModalSeleccionados.length} auditor(es) marcados ausentes. Motivo: ${motivoTexto}.`);
-                    this.notificar(`${this.auditoresModalSeleccionados.length} auditor(es) marcados como ausentes (${motivoTexto}).`, 'success');
-                    this.auditoresModalSeleccionados = []; this.ausenteMostrar = false; this.ausenteMotivo = null; this.ausenteMotivoOtro = '';
+                    const detalleHasta = hastaFecha ? ` Reposo hasta el ${this.formatearFechaViaje(hastaFecha)}.` : '';
+                    this.registrarBitacora('GENERAL', 'Ausencia registrada', `${this.auditoresModalSeleccionados.length} auditor(es) marcados ausentes. Motivo: ${motivoTexto}.${detalleHasta}`);
+                    this.notificar(`${this.auditoresModalSeleccionados.length} auditor(es) marcados como ausentes (${motivoTexto}${hastaFecha ? ' hasta el ' + this.formatearFechaViaje(hastaFecha) : ''}).`, 'success');
+                    this.auditoresModalSeleccionados = []; this.ausenteMostrar = false; this.ausenteMotivo = null; this.ausenteMotivoOtro = ''; this.ausenteHastaFecha = '';
                 },
                 quitarAusencia(nombre) {
                     if (this.noDrive()) return;
+                    const registro = this.auditoresAusentes[normalizarClave(nombre)];
+                    const detalle = registro ? ` (motivo: ${registro.motivo || 'sin especificar'}${registro.hastaFecha ? ', estuvo de reposo hasta el ' + this.formatearFechaViaje(registro.hastaFecha) : ''})` : '';
                     this.$delete(this.auditoresAusentes, normalizarClave(nombre));
-                    this.registrarBitacora('GENERAL', 'Reincorporación', `Se quitó la ausencia de ${nombre}.`);
+                    this.registrarBitacora('GENERAL', 'Reincorporación', `Se quitó la ausencia de ${nombre}${detalle}.`);
                     this.notificar(`${obtenerNombreApellido(nombre)} reincorporado.`, 'info');
                 },
                 filtrarPorDias(fila, filtro) {
@@ -2587,7 +2611,7 @@
                     let bloque = `🚫 *Auditores ausentes*\n`;
                     ausentes
                         .sort((a, b) => obtenerNombreApellido(a.nombre).localeCompare(obtenerNombreApellido(b.nombre), 'es'))
-                        .forEach(a => { bloque += `${obtenerNombreApellido(a.nombre)} - ${a.motivo || 'Sin motivo especificado'}\n`; });
+                        .forEach(a => { bloque += `${obtenerNombreApellido(a.nombre)} - ${a.motivo || 'Sin motivo especificado'}${a.hastaFecha ? ' (hasta el ' + this.formatearFechaViaje(a.hastaFecha) + ')' : ''}\n`; });
                     bloque += '\n';
                     return bloque;
                 },
@@ -2721,6 +2745,16 @@
                     const nombre = this.viajeAuditorTemp;
                     if (nombre && !this.viajeAuditoresSeleccionados.includes(nombre)) this.viajeAuditoresSeleccionados.push(nombre);
                     this.viajeAuditorTemp = '';
+                    this.viajeAuditorBusqueda = '';
+                },
+                viajeAgregarPrimerFiltrado() {
+                    // Enter en el buscador: agrega directamente el primer auditor que coincide con la búsqueda
+                    if (!this.viajeAuditorBusqueda.trim()) return;
+                    const primero = this.viajeAuditoresDisponiblesFiltrados[0];
+                    if (!primero) { this.notificar('Ningún auditor coincide con la búsqueda.', 'warning'); return; }
+                    this.viajeAuditoresSeleccionados.push(primero);
+                    this.notificar(`${obtenerNombreApellido(primero)} asignado al viaje.`, 'success');
+                    this.viajeAuditorBusqueda = '';
                 },
                 viajeQuitarAuditor(nombre) {
                     this.viajeAuditoresSeleccionados = this.viajeAuditoresSeleccionados.filter(a => a !== nombre);
@@ -2783,7 +2817,7 @@
                         this.registrarBitacora('VIAJES', 'Sincronización con cronograma', `Viaje "${nombre}": ${partes.join(' y ')}.`);
                         this.notificar(partes.join('. ') + '.', 'info');
                     }
-                    this.viajeNombre = ''; this.viajeFecha = ''; this.viajeAuditoresSeleccionados = []; this.viajeAuditorTemp = '';
+                    this.viajeNombre = ''; this.viajeFecha = ''; this.viajeAuditoresSeleccionados = []; this.viajeAuditorTemp = ''; this.viajeAuditorBusqueda = '';
                     this.rutaTab = 'historial';
                 },
                 viajeEditarGuardado(v) {
@@ -2807,7 +2841,7 @@
                     else this.notificar('Viaje cargado para edición. Al finalizar presioná "Guardar cambios".', 'info');
                 },
                 viajeCancelarEdicion() {
-                    this.viajeEditandoId = null; this.viajeNombre = ''; this.viajeFecha = ''; this.viajeAuditoresSeleccionados = []; this.viajeAuditorTemp = '';
+                    this.viajeEditandoId = null; this.viajeNombre = ''; this.viajeFecha = ''; this.viajeAuditoresSeleccionados = []; this.viajeAuditorTemp = ''; this.viajeAuditorBusqueda = '';
                     this.notificar('Edición cancelada. El viaje agendado no se modificó.', 'info');
                 },
                 viajeEliminarGuardado(v) {
