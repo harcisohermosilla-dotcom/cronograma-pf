@@ -471,6 +471,13 @@
         .bitacora-item .bitacora-modulo.pf { background: #dbeafe; color: #1e40af; }
         .bitacora-item .bitacora-modulo.cl { background: #ede9fe; color: #5b21b6; }
         .bitacora-item .bitacora-modulo.global { background: #f1f5f9; color: #475569; }
+        .bitacora-item .bitacora-modulo.viajes { background: #fce7f3; color: #be185d; }
+        /* Auditores asignados al viaje */
+        .viaje-auditores-barra { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; padding: 10px 12px; background: #fdf4ff; border: 1px dashed #d8b4fe; border-radius: 12px; }
+        .viaje-auditores-barra select { min-width: 200px; }
+        .viaje-tag-auditor { display: inline-flex; align-items: center; gap: 5px; background: #f3e8ff; color: #6b21a8; font-size: 0.65rem; font-weight: 600; padding: 3px 8px; border-radius: 20px; }
+        .viaje-tag-auditor button { background: none; border: none; color: #9333ea; cursor: pointer; font-size: 0.7rem; padding: 0 2px; line-height: 1; }
+        .viaje-tag-auditor button:hover { color: #dc2626; }
         .bitacora-item .bitacora-accion { font-weight: 700; color: #1e293b; }
         .bitacora-item .bitacora-fecha { margin-left: auto; font-size: 0.65rem; color: #94a3b8; }
         .bitacora-item .bitacora-detalle { color: #475569; }
@@ -1263,6 +1270,21 @@
                             <button class="btn btn-outline btn-sm" @click="viajeCopiarResumen"><i class="fas fa-copy"></i> Copiar resumen</button>
                             <button class="btn whatsapp-share btn-sm" @click="viajeCompartirWhatsApp"><i class="fab fa-whatsapp"></i> WhatsApp</button>
                         </div>
+                        <!-- Auditores asignados al viaje -->
+                        <div class="viaje-auditores-barra">
+                            <i class="fas fa-user-check" style="color:#9333ea;"></i>
+                            <span style="font-size:0.7rem; font-weight:700; color:#6b21a8;">Auditores del viaje:</span>
+                            <select v-model="viajeAuditorTemp" @change="viajeAgregarAuditor">
+                                <option value="">+ Asignar auditor...</option>
+                                <option v-for="a in viajeAuditoresDisponibles" :key="a" :value="a">{{ a }}</option>
+                            </select>
+                            <span class="viaje-tag-auditor" v-for="a in viajeAuditoresSeleccionados" :key="a">
+                                {{ obtenerNombreApellido(a) }}
+                                <button @click="viajeQuitarAuditor(a)" title="Quitar auditor del viaje"><i class="fas fa-times"></i></button>
+                            </span>
+                            <span v-if="viajeAuditoresSeleccionados.length === 0" style="font-size:0.65rem; color:#94a3b8;">Sin auditores asignados (opcional)</span>
+                        </div>
+                        <p style="font-size:0.62rem; color:#7e22ce; margin-top:4px;"><i class="fas fa-info-circle"></i> Al agendar, los auditores elegidos se asignan también a los PDVs del viaje en el cronograma, y esos PDVs pasan a estado <strong>📅 Agendado</strong>.</p>
                         <!-- Agendar viaje en el historial -->
                         <div class="viaje-agendar-barra">
                             <i class="fas fa-calendar-plus" style="color:#ec4899;"></i>
@@ -1300,6 +1322,13 @@
                             · <i class="fas fa-clock"></i> {{ formatearHoras(v.horas) }}
                             · {{ v.idaVuelta ? 'Ida y vuelta' : 'Solo ida' }}
                             · <span style="color:#94a3b8;">Creado: {{ formatearFechaHoraViaje(v.creadoEn) }}<span v-if="v.actualizadoEn"> · Editado: {{ formatearFechaHoraViaje(v.actualizadoEn) }}</span></span>
+                        </div>
+                        <div style="margin-top:6px; font-size:0.68rem;">
+                            <i class="fas fa-user-check" style="color:#9333ea;"></i>
+                            <span v-if="(v.auditores || []).length > 0">
+                                <span class="viaje-tag-auditor" v-for="a in v.auditores" :key="a" style="margin-right:4px;">{{ obtenerNombreApellido(a) }}</span>
+                            </span>
+                            <span v-else style="color:#94a3b8;">Sin auditores asignados</span>
                         </div>
                         <div class="viaje-hist-paradas" v-if="viajeHistorialDetalleId === v.id">
                             <div v-for="(p, idx) in v.puntos" :key="idx">
@@ -1629,6 +1658,7 @@
                 motivosReauditoria: motivosReauditoria, reauditarMostrar: false, reauditarModulo: 'pf', reauditarMotivo: null, rutaMostrar: false, rutaTitulo: '', rutaPuntos: [], rutaTiempo: 0,
                 rutaTab: 'agendados', viajeBusqueda: '', viajeDepartamento: '', viajeCiudad: '', viajeSeleccionUids: [], viajeIdaVuelta: true, viajeFactorRuta: 1.3, viajeVelocidad: 60,
                 viajesGuardados: [], viajeNombre: '', viajeFecha: '', viajeEditandoId: null, viajeHistorialBusqueda: '', viajeHistorialDetalleId: null,
+                viajeAuditoresSeleccionados: [], viajeAuditorTemp: '',
                 motivosAusencia: motivosAusencia, ausenteMostrar: false, ausenteMotivo: null, ausenteMotivoOtro: '', auditoresModalSeleccionados: [],
                 generadoMostrar: false, generadoModulo: '', generadoCantidad: 0, generadoFecha: '', generadoTexto: '', generadoTextoHtml: '', generadoPuntos: [], generadoVecesCompartido: 0,
                 eliminarMostrar: false, eliminarModulo: 'pf', eliminarPassword: '',
@@ -1685,6 +1715,10 @@
                 },
                 viajePuntosSeleccionados() {
                     return this.viajeSeleccionUids.map(uid => this.pfFilas.find(f => f._uid === uid)).filter(Boolean);
+                },
+                viajeAuditoresDisponibles() {
+                    // Reutiliza la base compartida de auditores, excluyendo ausentes y ya asignados al viaje
+                    return this.auditores.filter(a => !this.viajeAuditoresSeleccionados.includes(a) && !this.esAusente(a));
                 },
                 viajesGuardadosFiltrados() {
                     // Ordenados por fecha programada (los sin fecha al final) y filtrados por búsqueda
@@ -1853,7 +1887,7 @@
                         if (typeof data.pfBloqueado === 'boolean') this.pfBloqueado = data.pfBloqueado; if (typeof data.clBloqueado === 'boolean') this.clBloqueado = data.clBloqueado;
                         if (Array.isArray(data.bitacora)) this.bitacora = data.bitacora; if (Array.isArray(data.historialNotificaciones)) this.historialNotificaciones = data.historialNotificaciones;
                         if (data.ultimoMensajePF) this.ultimoMensajePF = data.ultimoMensajePF; if (data.ultimoMensajeCL) this.ultimoMensajeCL = data.ultimoMensajeCL;
-                        if (Array.isArray(data.viajesGuardados)) this.viajesGuardados = data.viajesGuardados.filter(v => v && v.id && Array.isArray(v.puntos));
+                        if (Array.isArray(data.viajesGuardados)) this.viajesGuardados = data.viajesGuardados.filter(v => v && v.id && Array.isArray(v.puntos)).map(v => ({ ...v, auditores: Array.isArray(v.auditores) ? v.auditores : [] }));
                         
                         [...this.pfFilas, ...this.clFilas].forEach(f => {
                             if (!f._uid) f._uid = nextUid(); ajustarContadorUid(f._uid);
@@ -2174,6 +2208,24 @@
                     const filasAud = [headersAud, ...[...this.auditores].sort((a, b) => obtenerNombreApellido(a).localeCompare(obtenerNombreApellido(b), 'es')).map(a => [a, this.esAusente(a) ? 'Ausente' : 'Activo', this.motivoAusencia(a) || ''])];
                     const wsAud = XLSX.utils.aoa_to_sheet(filasAud);
                     XLSX.utils.book_append_sheet(wb, wsAud, 'Auditores');
+                    // Hoja de viajes agendados: un renglón por viaje con todos sus datos.
+                    const headersVj = ['Nombre', 'Fecha programada', 'Ida y vuelta', 'Total Km', 'Horas de manejo', 'Velocidad (km/h)', 'Factor camino', 'Cant. paradas', 'Paradas (en orden)', 'Auditores asignados', 'Creado en', 'Actualizado en'];
+                    const filasVj = [headersVj, ...this.viajesGuardados.map(v => [
+                        v.nombre || '',
+                        v.fecha ? this.formatearFechaViaje(v.fecha) : '',
+                        v.idaVuelta !== false ? 'Sí' : 'No',
+                        v.totalKm !== null && v.totalKm !== undefined ? Math.round(v.totalKm * 10) / 10 : '',
+                        this.formatearHoras(v.horas),
+                        v.velocidad || 60,
+                        v.factor || 1.3,
+                        (v.puntos || []).length,
+                        (v.puntos || []).map((p, i) => `${i + 1}. ${p.nro ? 'PDV ' + p.nro : 'S/N'} - ${p.descripcion || ''} (${p.ciudad || 'Sin ciudad'}${p.departamento ? ', ' + p.departamento : ''})`).join(' | '),
+                        (v.auditores || []).join(', '),
+                        this.formatearFechaHoraViaje(v.creadoEn),
+                        v.actualizadoEn ? this.formatearFechaHoraViaje(v.actualizadoEn) : ''
+                    ])];
+                    const wsVj = XLSX.utils.aoa_to_sheet(filasVj);
+                    XLSX.utils.book_append_sheet(wb, wsVj, 'Viajes');
                     // Hoja de bitácora de auditoría: registra quién (correo conectado) hizo cada cambio.
                     const headersBit = ['Fecha', 'Módulo', 'Acción', 'Detalle', 'Usuario (correo)'];
                     const filasBit = [headersBit, ...this.bitacora.map(b => [formatearFechaHora(b.fecha), b.modulo, b.accion, b.detalle, b.usuario || 'Sin conectar (local)'])];
@@ -2665,6 +2717,32 @@
                     if (isNaN(d)) return '-';
                     return d.toLocaleDateString('es-PY') + ' ' + d.toLocaleTimeString('es-PY', { hour: '2-digit', minute: '2-digit' });
                 },
+                viajeAgregarAuditor() {
+                    const nombre = this.viajeAuditorTemp;
+                    if (nombre && !this.viajeAuditoresSeleccionados.includes(nombre)) this.viajeAuditoresSeleccionados.push(nombre);
+                    this.viajeAuditorTemp = '';
+                },
+                viajeQuitarAuditor(nombre) {
+                    this.viajeAuditoresSeleccionados = this.viajeAuditoresSeleccionados.filter(a => a !== nombre);
+                },
+                viajeSincronizarCronograma(uids, auditoresViaje) {
+                    // Vincula el viaje con la agenda: los PDVs incluidos pasan a "agendado" en el cronograma
+                    // y se les asignan los auditores elegidos para el viaje (sin duplicar).
+                    let agendados = 0, asignaciones = 0;
+                    uids.forEach(uid => {
+                        const fila = this.pfFilas.find(f => f._uid === uid);
+                        if (!fila) return;
+                        if (fila.estado === 'pendiente') { fila.estado = 'agendado'; agendados++; }
+                        (auditoresViaje || []).forEach(nombre => {
+                            if (!fila.personasSeleccionadas.includes(nombre)) {
+                                fila.personasSeleccionadas.push(nombre);
+                                if (fila.supervisoresSeleccionados.length === 0) fila.supervisoresSeleccionados.push(nombre);
+                                asignaciones++;
+                            }
+                        });
+                    });
+                    return { agendados, asignaciones };
+                },
                 viajeAgendar() {
                     if (this.viajePuntosSeleccionados.length === 0) { this.notificar('Armá primero la ruta agregando al menos un PDV.', 'warning'); return; }
                     const nombre = this.viajeNombre.trim() || `Viaje ${new Date().toLocaleDateString('es-PY')}`;
@@ -2678,21 +2756,34 @@
                     const datos = {
                         nombre, fecha: this.viajeFecha || '', idaVuelta: this.viajeIdaVuelta,
                         factor: this.viajeFactorRuta, velocidad: this.viajeVelocidad,
+                        auditores: [...this.viajeAuditoresSeleccionados],
                         puntos, tramos: r.tramos.map(t => ({ ...t })), totalKm: r.totalKm, horas: r.horas
                     };
+                    const resumenBitacora = `"${nombre}"${datos.fecha ? ' (fecha: ' + this.formatearFechaViaje(datos.fecha) + ')' : ''}: ${puntos.length} parada(s), ${this.formatearKm(r.totalKm)}. Auditores: ${datos.auditores.length > 0 ? datos.auditores.map(obtenerNombreApellido).join(', ') : 'sin asignar'}.`;
                     if (this.viajeEditandoId) {
                         const idx = this.viajesGuardados.findIndex(v => v.id === this.viajeEditandoId);
                         if (idx !== -1) {
                             const original = this.viajesGuardados[idx];
                             this.viajesGuardados.splice(idx, 1, { ...original, ...datos, actualizadoEn: new Date().toISOString() });
+                            this.registrarBitacora('VIAJES', 'Viaje editado', `Viaje ${resumenBitacora}`);
                             this.notificar(`Viaje "${nombre}" actualizado en el historial.`, 'success');
                         }
                         this.viajeEditandoId = null;
                     } else {
                         this.viajesGuardados.push({ id: 'viaje_' + Date.now() + '_' + Math.floor(Math.random() * 10000), creadoEn: new Date().toISOString(), actualizadoEn: null, ...datos });
+                        this.registrarBitacora('VIAJES', 'Viaje agendado', `Viaje ${resumenBitacora}`);
                         this.notificar(`Viaje "${nombre}" agendado en el historial.`, 'success');
                     }
-                    this.viajeNombre = ''; this.viajeFecha = '';
+                    // Vinculación viaje ↔ agenda: marca los PDVs incluidos como "agendado" y les asigna los auditores del viaje
+                    const sync = this.viajeSincronizarCronograma(this.viajeSeleccionUids, datos.auditores);
+                    if (sync.agendados > 0 || sync.asignaciones > 0) {
+                        const partes = [];
+                        if (sync.agendados > 0) partes.push(`${sync.agendados} PDV(s) marcados como Agendado en el cronograma`);
+                        if (sync.asignaciones > 0) partes.push(`${sync.asignaciones} asignación(es) de auditor agregadas`);
+                        this.registrarBitacora('VIAJES', 'Sincronización con cronograma', `Viaje "${nombre}": ${partes.join(' y ')}.`);
+                        this.notificar(partes.join('. ') + '.', 'info');
+                    }
+                    this.viajeNombre = ''; this.viajeFecha = ''; this.viajeAuditoresSeleccionados = []; this.viajeAuditorTemp = '';
                     this.rutaTab = 'historial';
                 },
                 viajeEditarGuardado(v) {
@@ -2708,18 +2799,21 @@
                     this.viajeVelocidad = v.velocidad || 60;
                     this.viajeNombre = v.nombre || '';
                     this.viajeFecha = v.fecha || '';
+                    this.viajeAuditoresSeleccionados = Array.isArray(v.auditores) ? [...v.auditores] : [];
+                    this.viajeAuditorTemp = '';
                     this.viajeEditandoId = v.id;
                     this.rutaTab = 'viaje';
                     if (faltantes > 0) this.notificar(`${faltantes} punto(s) del viaje ya no están en la base y no se cargaron.`, 'warning');
                     else this.notificar('Viaje cargado para edición. Al finalizar presioná "Guardar cambios".', 'info');
                 },
                 viajeCancelarEdicion() {
-                    this.viajeEditandoId = null; this.viajeNombre = ''; this.viajeFecha = '';
+                    this.viajeEditandoId = null; this.viajeNombre = ''; this.viajeFecha = ''; this.viajeAuditoresSeleccionados = []; this.viajeAuditorTemp = '';
                     this.notificar('Edición cancelada. El viaje agendado no se modificó.', 'info');
                 },
                 viajeEliminarGuardado(v) {
                     if (!window.confirm(`¿Eliminar el viaje "${v.nombre}" del historial? Esta acción no se puede deshacer.`)) return;
                     this.viajesGuardados = this.viajesGuardados.filter(x => x.id !== v.id);
+                    this.registrarBitacora('VIAJES', 'Viaje eliminado', `Viaje "${v.nombre}"${v.fecha ? ' (fecha: ' + this.formatearFechaViaje(v.fecha) + ')' : ''} eliminado del historial. Tenía ${(v.puntos || []).length} parada(s).`);
                     if (this.viajeEditandoId === v.id) this.viajeCancelarEdicion();
                     if (this.viajeHistorialDetalleId === v.id) this.viajeHistorialDetalleId = null;
                     this.notificar(`Viaje "${v.nombre}" eliminado del historial.`, 'success');
@@ -2737,6 +2831,7 @@
                 viajeCompartirGuardadoWhatsApp(v) {
                     let texto = `🚐 *${v.nombre}* (${v.idaVuelta ? 'ida y vuelta' : 'solo ida'})\n`;
                     if (v.fecha) texto += `📅 Fecha programada: ${this.formatearFechaViaje(v.fecha)}\n`;
+                    if ((v.auditores || []).length > 0) texto += `👥 Auditores: ${v.auditores.map(obtenerNombreApellido).join(', ')}\n`;
                     texto += `📍 Salida: ${PUNTO_PARTIDA.nombre}\n\n`;
                     (v.tramos || []).forEach(t => { texto += `${t.orden}. ${t.desde} ➜ ${t.hasta}: ${this.formatearKm(t.km)}\n`; });
                     texto += `\n📏 *Total estimado: ${this.formatearKm(v.totalKm)}*\n⏱️ Tiempo aprox.: ${this.formatearHoras(v.horas)} (a ${v.velocidad || 60} km/h)`;
