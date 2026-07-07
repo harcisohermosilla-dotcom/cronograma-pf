@@ -332,6 +332,34 @@
         .ruta-item .info { flex: 1; }
         .ruta-item .distancia { color: #64748b; font-size: 0.7rem; }
         .ruta-total { margin-top: 12px; padding: 10px; background: linear-gradient(135deg, #ede9fe, #dbeafe); border-radius: 12px; text-align: center; font-weight: 600; font-size: 0.85rem; }
+        /* Sub-menú del modal Ruta */
+        .ruta-submenu { display: flex; gap: 6px; margin-bottom: 14px; background: #f1f5f9; padding: 5px; border-radius: 14px; }
+        .ruta-subtab { flex: 1; border: none; background: transparent; padding: 8px 12px; border-radius: 10px; font-size: 0.8rem; font-weight: 600; color: #64748b; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .ruta-subtab:hover { color: #0f2b4b; }
+        .ruta-subtab.active { background: white; color: #ec4899; box-shadow: 0 2px 8px rgba(15,23,42,0.10); }
+        /* Armar Ruta Viaje */
+        .viaje-filtros { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+        .viaje-buscador { flex: 1; min-width: 200px; display: flex; align-items: center; gap: 8px; background: #f8faff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 6px 12px; }
+        .viaje-buscador i { color: #94a3b8; font-size: 0.8rem; }
+        .viaje-buscador input { border: none; outline: none; background: transparent; flex: 1; font-size: 0.78rem; }
+        .viaje-filtros select { border: 1px solid #e2e8f0; border-radius: 12px; padding: 6px 10px; font-size: 0.75rem; background: #f8faff; cursor: pointer; outline: none; max-width: 200px; }
+        .viaje-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        @media (max-width: 768px) { .viaje-grid { grid-template-columns: 1fr; } }
+        .viaje-panel { border: 1px solid #e9edf4; border-radius: 14px; overflow: hidden; background: #fbfdff; }
+        .viaje-panel-titulo { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; font-weight: 700; color: #0f2b4b; padding: 8px 12px; background: #eef2f8; }
+        .viaje-lista { max-height: 260px; overflow-y: auto; padding: 4px 6px; }
+        .viaje-pdv { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 7px 10px; border-bottom: 1px solid #eef2f8; cursor: pointer; border-radius: 8px; font-size: 0.72rem; transition: 0.15s; }
+        .viaje-pdv:hover { background: #eff6ff; }
+        .viaje-badge-warn { background: #fef3c7; color: #92400e; padding: 1px 7px; border-radius: 20px; font-size: 0.56rem; font-weight: 600; margin-left: 4px; white-space: nowrap; }
+        .viaje-acciones { display: flex; gap: 3px; }
+        .viaje-acciones button { border: 1px solid #e2e8f0; background: white; width: 24px; height: 24px; border-radius: 7px; cursor: pointer; color: #475569; font-size: 0.65rem; display: flex; align-items: center; justify-content: center; transition: 0.15s; }
+        .viaje-acciones button:hover:not(:disabled) { background: #eff6ff; border-color: #93c5fd; }
+        .viaje-acciones button:disabled { opacity: 0.35; cursor: not-allowed; }
+        .viaje-opciones { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-top: 10px; background: #f8faff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 8px 12px; font-size: 0.72rem; font-weight: 500; color: #334155; }
+        .viaje-opciones label { display: flex; align-items: center; gap: 5px; }
+        .viaje-opciones input[type="number"] { width: 60px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 3px 6px; font-size: 0.72rem; outline: none; }
+        .viaje-check input[type="checkbox"] { width: 15px; height: 15px; accent-color: #ec4899; cursor: pointer; }
+        .viaje-tramo { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-bottom: 1px solid #eef2f8; }
         .input-group { display: flex; gap: 6px; align-items: center; margin: 3px 0; }
         .input-group input { padding: 4px 10px; border: 1px solid #d1d9e6; border-radius: 8px; font-size: 0.75rem; transition: 0.2s; }
         .input-group input:focus { outline: 2px solid #2563eb; border-color: transparent; }
@@ -1102,20 +1130,123 @@
     </div>
 
     <div class="modal-overlay" v-if="rutaMostrar" @click.self="rutaMostrar = false">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width:900px;">
             <button class="close-modal" @click="rutaMostrar = false">&times;</button>
-            <h2><i class="fas fa-route" style="color:#ec4899;"></i> Ruta Optimizada - {{ rutaTitulo }}</h2>
-            <p style="color:#64748b; margin-bottom:12px;">Puntos agendados: <strong>{{ rutaPuntos.length }}</strong></p>
-            <div v-if="rutaPuntos.length === 0" style="text-align:center; padding:30px; color:#64748b;"><i class="fas fa-info-circle" style="font-size:2.5rem; color:#94a3b8;"></i><p style="margin-top:10px;">No hay puntos agendados.</p></div>
-            <div v-else>
-                <div class="ruta-item" v-for="(item, idx) in rutaPuntos" :key="idx">
-                    <span class="orden">{{ idx + 1 }}</span>
-                    <div class="info">
-                        <strong>{{ item.DEPOSITO || item.NRO_SUCURSAL || 'S/N' }}</strong>
-                        <span v-if="item.SECTOR"> - {{ item.SECTOR }}</span>
-                        <span v-else-if="item.ESTR_DESCRIPCION"> - {{ item.ESTR_DESCRIPCION }}</span>
-                        <span v-if="item.horaConvocatoria || item.horaSalida" style="color:#d97706; font-weight:600;"> (Conv: {{ item.horaConvocatoria || '-' }} | Salida: {{ item.horaSalida || '-' }})</span>
-                        <div style="font-size:0.6rem; color:#64748b;">Sup: {{ item.supervisoresSeleccionados && item.supervisoresSeleccionados.length ? item.supervisoresSeleccionados.map(obtenerNombreApellido).join(', ') : 'N/A' }}</div>
+            <h2><i class="fas fa-route" style="color:#ec4899;"></i> Ruta - {{ rutaTitulo }}</h2>
+            <!-- Sub-menú del modal Ruta -->
+            <div class="ruta-submenu">
+                <button class="ruta-subtab" :class="{ active: rutaTab === 'agendados' }" @click="rutaTab = 'agendados'"><i class="fas fa-calendar-check"></i> Ruta Agendados</button>
+                <button class="ruta-subtab" :class="{ active: rutaTab === 'viaje' }" @click="rutaTab = 'viaje'"><i class="fas fa-bus"></i> Armar Ruta Viaje</button>
+            </div>
+
+            <!-- Sub-menú 1: ruta de puntos agendados (comportamiento original) -->
+            <div v-if="rutaTab === 'agendados'">
+                <p style="color:#64748b; margin-bottom:12px;">Puntos agendados: <strong>{{ rutaPuntos.length }}</strong></p>
+                <div v-if="rutaPuntos.length === 0" style="text-align:center; padding:30px; color:#64748b;"><i class="fas fa-info-circle" style="font-size:2.5rem; color:#94a3b8;"></i><p style="margin-top:10px;">No hay puntos agendados.</p></div>
+                <div v-else>
+                    <div class="ruta-item" v-for="(item, idx) in rutaPuntos" :key="idx">
+                        <span class="orden">{{ idx + 1 }}</span>
+                        <div class="info">
+                            <strong>{{ item.DEPOSITO || item.NRO_SUCURSAL || 'S/N' }}</strong>
+                            <span v-if="item.SECTOR"> - {{ item.SECTOR }}</span>
+                            <span v-else-if="item.ESTR_DESCRIPCION"> - {{ item.ESTR_DESCRIPCION }}</span>
+                            <span v-if="item.horaConvocatoria || item.horaSalida" style="color:#d97706; font-weight:600;"> (Conv: {{ item.horaConvocatoria || '-' }} | Salida: {{ item.horaSalida || '-' }})</span>
+                            <div style="font-size:0.6rem; color:#64748b;">Sup: {{ item.supervisoresSeleccionados && item.supervisoresSeleccionados.length ? item.supervisoresSeleccionados.map(obtenerNombreApellido).join(', ') : 'N/A' }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sub-menú 2: Armar Ruta Viaje -->
+            <div v-if="rutaTab === 'viaje'">
+                <p style="color:#64748b; margin-bottom:10px; font-size:0.82rem;">
+                    <i class="fas fa-map-marker-alt" style="color:#dc2626;"></i> Punto de partida fijo: <strong>Lat -25.38009066, Long -57.55316576</strong>.
+                    Seleccioná PDVs de tipo <strong>VIAJE</strong> y armá el recorrido punto por punto.
+                </p>
+                <div v-if="viajePdvsBase.length === 0" style="text-align:center; padding:26px; color:#64748b; background:#f8faff; border-radius:14px; border:1px dashed #cbd5e1;">
+                    <i class="fas fa-database" style="font-size:2rem; color:#94a3b8;"></i>
+                    <p style="margin-top:10px;">No hay PDVs con TIPO = "VIAJE".<br>Importá la BD con las columnas <strong>DEPARTAMENTO, CIUDAD, LATITUD, LONGITUD y TIPO</strong>.</p>
+                </div>
+                <div v-else>
+                    <!-- Motor de búsqueda -->
+                    <div class="viaje-filtros">
+                        <div class="viaje-buscador"><i class="fas fa-search"></i><input type="text" v-model="viajeBusqueda" placeholder="Buscar por ciudad, departamento, PDV o descripción..."></div>
+                        <select v-model="viajeDepartamento" @change="viajeCiudad = ''"><option value="">Todos los departamentos</option><option v-for="d in viajeDepartamentos" :key="d" :value="d">{{ d }}</option></select>
+                        <select v-model="viajeCiudad"><option value="">Todas las ciudades</option><option v-for="c in viajeCiudades" :key="c" :value="c">{{ c }}</option></select>
+                    </div>
+                    <div class="viaje-grid">
+                        <!-- Disponibles -->
+                        <div class="viaje-panel">
+                            <div class="viaje-panel-titulo"><i class="fas fa-store"></i> PDVs disponibles ({{ viajePdvsDisponibles.length }})
+                                <button class="btn-sm btn btn-outline" style="margin-left:auto; font-size:0.6rem; padding:2px 8px;" @click="viajeAgregarTodosFiltrados" v-if="viajePdvsDisponibles.length > 0" title="Agregar todos los filtrados a la ruta">+ Todos</button>
+                            </div>
+                            <div class="viaje-lista">
+                                <div v-if="viajePdvsDisponibles.length === 0" style="padding:16px; text-align:center; color:#94a3b8; font-size:0.75rem;">Sin resultados con esos filtros.</div>
+                                <div class="viaje-pdv" v-for="f in viajePdvsDisponibles" :key="f._uid" @click="viajeAgregar(f)" title="Click para agregar a la ruta">
+                                    <div>
+                                        <strong>{{ f.NRO_SUCURSAL ? 'PDV ' + f.NRO_SUCURSAL : 'S/N' }}</strong> - {{ f.ESTR_DESCRIPCION || 'Sin descripción' }}
+                                        <div style="font-size:0.62rem; color:#64748b;"><i class="fas fa-map-pin" style="color:#ec4899;"></i> {{ f.CIUDAD || 'Sin ciudad' }}<span v-if="f.DEPARTAMENTO">, {{ f.DEPARTAMENTO }}</span>
+                                            <span v-if="f.LATITUD == null || f.LONGITUD == null" class="viaje-badge-warn" title="Este PDV no tiene coordenadas cargadas">⚠ sin coordenadas</span>
+                                        </div>
+                                    </div>
+                                    <i class="fas fa-plus-circle" style="color:#16a34a; font-size:1rem;"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Ruta armada -->
+                        <div class="viaje-panel">
+                            <div class="viaje-panel-titulo"><i class="fas fa-route"></i> Recorrido ({{ viajePuntosSeleccionados.length }} paradas)
+                                <button class="btn-sm btn btn-outline" style="margin-left:auto; font-size:0.6rem; padding:2px 8px;" @click="viajeLimpiar" v-if="viajeSeleccionUids.length > 0">Vaciar</button>
+                            </div>
+                            <div class="viaje-lista">
+                                <div v-if="viajeSeleccionUids.length === 0" style="padding:16px; text-align:center; color:#94a3b8; font-size:0.75rem;">Hacé click en un PDV de la izquierda para sumarlo a la ruta.</div>
+                                <div class="ruta-item" style="background:#fdf2f8; border-radius:8px; margin-bottom:4px;" v-if="viajeSeleccionUids.length > 0">
+                                    <span class="orden" style="background:#fce7f3; color:#be185d;">0</span>
+                                    <div class="info"><strong>Punto de Partida (Base)</strong><div style="font-size:0.6rem; color:#64748b;">-25.38009066, -57.55316576</div></div>
+                                </div>
+                                <div class="ruta-item" v-for="(f, idx) in viajePuntosSeleccionados" :key="f._uid">
+                                    <span class="orden">{{ idx + 1 }}</span>
+                                    <div class="info">
+                                        <strong>{{ f.NRO_SUCURSAL ? 'PDV ' + f.NRO_SUCURSAL : 'S/N' }}</strong> - {{ f.ESTR_DESCRIPCION || '' }}
+                                        <div style="font-size:0.6rem; color:#64748b;">{{ f.CIUDAD || 'Sin ciudad' }}<span v-if="f.DEPARTAMENTO">, {{ f.DEPARTAMENTO }}</span>
+                                            <span v-if="f.LATITUD == null || f.LONGITUD == null" class="viaje-badge-warn">⚠ sin coordenadas</span>
+                                        </div>
+                                    </div>
+                                    <div class="viaje-acciones">
+                                        <button @click="viajeSubir(idx)" :disabled="idx === 0" title="Subir"><i class="fas fa-arrow-up"></i></button>
+                                        <button @click="viajeBajar(idx)" :disabled="idx === viajePuntosSeleccionados.length - 1" title="Bajar"><i class="fas fa-arrow-down"></i></button>
+                                        <button @click="viajeQuitar(idx)" style="color:#dc2626;" title="Quitar"><i class="fas fa-times"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Opciones de cálculo -->
+                    <div class="viaje-opciones">
+                        <label class="viaje-check"><input type="checkbox" v-model="viajeIdaVuelta"> <i class="fas fa-exchange-alt"></i> Ida y vuelta (regresa al punto de partida)</label>
+                        <label>Factor camino <input type="number" step="0.05" min="1" max="2" v-model.number="viajeFactorRuta" title="Multiplicador sobre la distancia en línea recta para estimar km reales por ruta (1.3 recomendado)"></label>
+                        <label>Velocidad prom. <input type="number" step="5" min="10" max="120" v-model.number="viajeVelocidad"> km/h</label>
+                    </div>
+                    <!-- Detalle de tramos -->
+                    <div v-if="viajePuntosSeleccionados.length > 0" style="margin-top:10px;">
+                        <div class="viaje-panel-titulo" style="margin-bottom:4px;"><i class="fas fa-road"></i> Tramos del recorrido</div>
+                        <div class="viaje-tramo" v-for="t in viajeRuta.tramos" :key="t.orden">
+                            <span class="orden" style="background:#ede9fe; color:#5b21b6; font-weight:700; padding:2px 10px; border-radius:20px; font-size:0.7rem; margin-right:8px;">{{ t.orden }}</span>
+                            <span style="flex:1; font-size:0.72rem;">{{ t.desde }} <i class="fas fa-long-arrow-alt-right" style="color:#ec4899;"></i> {{ t.hasta }}</span>
+                            <strong style="font-size:0.75rem;" :style="t.sinCoord ? 'color:#d97706;' : 'color:#0f2b4b;'">{{ formatearKm(t.km) }}</strong>
+                        </div>
+                        <div class="ruta-total">
+                            <i class="fas fa-tachometer-alt"></i> Total estimado: <strong>{{ formatearKm(viajeRuta.totalKm) }}</strong>
+                            &nbsp;·&nbsp; <i class="fas fa-clock"></i> Manejo aprox.: <strong>{{ formatearHoras(viajeRuta.horas) }}</strong>
+                            <span v-if="viajeRuta.sinCoordenadas > 0" style="display:block; font-size:0.68rem; color:#b45309; margin-top:4px;">⚠ {{ viajeRuta.sinCoordenadas }} tramo(s) sin coordenadas no suman al total.</span>
+                            <span style="display:block; font-size:0.62rem; color:#64748b; margin-top:2px;">Cálculo por camino estimado (línea recta × factor {{ viajeFactorRuta }}), no lineal.</span>
+                        </div>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+                            <button class="btn btn-primary btn-sm" @click="viajeOptimizar"><i class="fas fa-magic"></i> Optimizar orden</button>
+                            <button class="btn btn-success btn-sm" @click="viajeAbrirGoogleMaps"><i class="fas fa-map-marked-alt"></i> Ver en Google Maps</button>
+                            <button class="btn btn-outline btn-sm" @click="viajeCopiarResumen"><i class="fas fa-copy"></i> Copiar resumen</button>
+                            <button class="btn whatsapp-share btn-sm" @click="viajeCompartirWhatsApp"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1248,6 +1379,25 @@
         }
         function guardarEstadoStorage(payload) {
             try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload)); return true; } catch (e) { return false; }
+        }
+        // ==================== UTILIDADES DE RUTA / COORDENADAS ====================
+        // Punto de partida fijo para el cálculo de rutas de viaje (Latitud -25.38009066, Longitud -57.55316576)
+        const PUNTO_PARTIDA = { nombre: 'Punto de Partida (Base)', lat: -25.38009066, lng: -57.55316576 };
+        // Acepta coordenadas con coma decimal ("-25,38009066"), punto decimal o número. Devuelve número o null.
+        function parsearCoordenada(valor) {
+            if (valor === null || valor === undefined || valor === '') return null;
+            if (typeof valor === 'number') return isFinite(valor) ? valor : null;
+            const limpio = String(valor).trim().replace(/\s/g, '').replace(',', '.');
+            const num = parseFloat(limpio);
+            return isFinite(num) ? num : null;
+        }
+        // Distancia Haversine en km (línea recta) entre dos puntos {lat, lng}
+        function haversineKm(a, b) {
+            if (!a || !b || a.lat === null || a.lng === null || b.lat === null || b.lng === null) return null;
+            const R = 6371, rad = Math.PI / 180;
+            const dLat = (b.lat - a.lat) * rad, dLng = (b.lng - a.lng) * rad;
+            const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
+            return 2 * R * Math.asin(Math.sqrt(h));
         }
         function debounce(fn, esperaMs) {
             let temporizador = null;
@@ -1397,7 +1547,7 @@
                 ultimoMensajePF: null, ultimoMensajeCL: null,
                 pfFilas: sampleDataPF.map(f => {
                     const dias = calcularDiasDesde(f.Ultimo_Inventario);
-                    return { ...f, _uid: nextUid(), personaTemp: '', supervisorTemp: '', dias: dias, colorClase: getColorClase(dias), auditoresWifi: f.auditoresWifi || [], supervisoresSeleccionados: Array.isArray(f.supervisoresSeleccionados) ? f.supervisoresSeleccionados : [], horaConvocatoria: f.horaConvocatoria || '07:30', horaSalida: f.horaSalida || '17:30', esReauditoria: false, tieneReauditoria: false, origenUid: null, reauditoriaUid: null };
+                    return { ...f, _uid: nextUid(), personaTemp: '', supervisorTemp: '', dias: dias, colorClase: getColorClase(dias), auditoresWifi: f.auditoresWifi || [], supervisoresSeleccionados: Array.isArray(f.supervisoresSeleccionados) ? f.supervisoresSeleccionados : [], horaConvocatoria: f.horaConvocatoria || '07:30', horaSalida: f.horaSalida || '17:30', esReauditoria: false, tieneReauditoria: false, origenUid: null, reauditoriaUid: null, DEPARTAMENTO: f.DEPARTAMENTO || '', CIUDAD: f.CIUDAD || '', LATITUD: parsearCoordenada(f.LATITUD), LONGITUD: parsearCoordenada(f.LONGITUD), TIPO: f.TIPO || '' };
                 }),
                 auditores: [...new Set([...defaultPersonasPF, ...defaultPersonasCL])],
                 auditoresAusentes: {},
@@ -1408,6 +1558,7 @@
                 }),
                 clBuscar: '', clSector: '', clFiltroDias: '', clFiltroEstado: '', clSeleccionarTodos: true, clNuevoAuditorNombre: '', clMostrarResumen: false, clBloqueado: false,
                 motivosReauditoria: motivosReauditoria, reauditarMostrar: false, reauditarModulo: 'pf', reauditarMotivo: null, rutaMostrar: false, rutaTitulo: '', rutaPuntos: [], rutaTiempo: 0,
+                rutaTab: 'agendados', viajeBusqueda: '', viajeDepartamento: '', viajeCiudad: '', viajeSeleccionUids: [], viajeIdaVuelta: true, viajeFactorRuta: 1.3, viajeVelocidad: 60,
                 motivosAusencia: motivosAusencia, ausenteMostrar: false, ausenteMotivo: null, ausenteMotivoOtro: '', auditoresModalSeleccionados: [],
                 generadoMostrar: false, generadoModulo: '', generadoCantidad: 0, generadoFecha: '', generadoTexto: '', generadoTextoHtml: '', generadoPuntos: [], generadoVecesCompartido: 0,
                 eliminarMostrar: false, eliminarModulo: 'pf', eliminarPassword: '',
@@ -1439,6 +1590,59 @@
                     const pf = this.pfFilas.filter(f => typeof f.dias === 'number' && f.dias > 180).map(f => ({ uid: f._uid, texto: `PDV ${f.NRO_SUCURSAL || 'S/N'} (${f.ESTR_DESCRIPCION || ''}) - ${f.dias} días sin inventario` }));
                     const cl = this.clFilas.filter(f => typeof f.dias === 'number' && f.dias > 180).map(f => ({ uid: f._uid, texto: `Depósito ${f.DEPOSITO || 'S/N'} - Sector ${f.SECTOR || ''} - ${f.dias} días sin inventario` }));
                     return [...pf, ...cl];
+                },
+                // ===== Armar Ruta Viaje =====
+                viajePdvsBase() {
+                    // Solo PDVs cuyo TIPO contenga "viaje" (sin distinguir mayúsculas/acentos)
+                    return this.pfFilas.filter(f => f.TIPO && String(f.TIPO).toLowerCase().includes('viaje'));
+                },
+                viajeDepartamentos() {
+                    return [...new Set(this.viajePdvsBase.map(f => (f.DEPARTAMENTO || '').trim()).filter(v => v))].sort((a, b) => a.localeCompare(b, 'es'));
+                },
+                viajeCiudades() {
+                    const base = this.viajeDepartamento ? this.viajePdvsBase.filter(f => (f.DEPARTAMENTO || '').trim().toLowerCase() === this.viajeDepartamento.toLowerCase()) : this.viajePdvsBase;
+                    return [...new Set(base.map(f => (f.CIUDAD || '').trim()).filter(v => v))].sort((a, b) => a.localeCompare(b, 'es'));
+                },
+                viajePdvsDisponibles() {
+                    const q = this.viajeBusqueda.trim().toLowerCase();
+                    return this.viajePdvsBase.filter(f => {
+                        if (this.viajeSeleccionUids.includes(f._uid)) return false;
+                        if (this.viajeDepartamento && (f.DEPARTAMENTO || '').trim().toLowerCase() !== this.viajeDepartamento.toLowerCase()) return false;
+                        if (this.viajeCiudad && (f.CIUDAD || '').trim().toLowerCase() !== this.viajeCiudad.toLowerCase()) return false;
+                        if (!q) return true;
+                        return [(f.CIUDAD || ''), (f.DEPARTAMENTO || ''), (f.ESTR_DESCRIPCION || ''), String(f.NRO_SUCURSAL || '')].some(v => String(v).toLowerCase().includes(q));
+                    });
+                },
+                viajePuntosSeleccionados() {
+                    return this.viajeSeleccionUids.map(uid => this.pfFilas.find(f => f._uid === uid)).filter(Boolean);
+                },
+                viajeRuta() {
+                    // Construye los tramos: Partida → Punto 1 → Punto 2 → … (→ Partida si es ida y vuelta)
+                    const factor = Math.max(1, parseFloat(this.viajeFactorRuta) || 1.3); // factor camino real (no lineal)
+                    const paradas = this.viajePuntosSeleccionados.map(f => ({
+                        fila: f,
+                        nombre: `${f.NRO_SUCURSAL ? 'PDV ' + f.NRO_SUCURSAL + ' - ' : ''}${f.ESTR_DESCRIPCION || 'S/N'}`,
+                        lat: parsearCoordenada(f.LATITUD), lng: parsearCoordenada(f.LONGITUD),
+                        ciudad: f.CIUDAD || '', departamento: f.DEPARTAMENTO || ''
+                    }));
+                    const tramos = []; let anterior = { nombre: PUNTO_PARTIDA.nombre, lat: PUNTO_PARTIDA.lat, lng: PUNTO_PARTIDA.lng };
+                    let totalKm = 0; let sinCoordenadas = 0;
+                    paradas.forEach((p, i) => {
+                        const lineal = haversineKm(anterior, p);
+                        const km = lineal === null ? null : lineal * factor;
+                        if (km === null) sinCoordenadas++; else totalKm += km;
+                        tramos.push({ desde: anterior.nombre, hasta: p.nombre, km: km, orden: i + 1, sinCoord: km === null });
+                        if (p.lat !== null && p.lng !== null) anterior = p; // si un punto no tiene coords, se salta para el cálculo
+                    });
+                    if (this.viajeIdaVuelta && paradas.length > 0) {
+                        const lineal = haversineKm(anterior, PUNTO_PARTIDA);
+                        const km = lineal === null ? null : lineal * factor;
+                        if (km !== null) totalKm += km;
+                        tramos.push({ desde: anterior.nombre, hasta: PUNTO_PARTIDA.nombre + ' (vuelta)', km: km, orden: tramos.length + 1, sinCoord: km === null });
+                    }
+                    const velocidad = Math.max(1, parseFloat(this.viajeVelocidad) || 60);
+                    const horas = totalKm / velocidad;
+                    return { tramos, totalKm, sinCoordenadas, horas };
                 },
                 pfFilasFiltradas() {
                     return this.pfFilas.filter(f => {
@@ -1578,6 +1782,9 @@
                             if (f.esReauditoria === undefined) f.esReauditoria = false; if (f.tieneReauditoria === undefined) f.tieneReauditoria = false;
                             if (f.origenUid === undefined) f.origenUid = null; if (f.reauditoriaUid === undefined) f.reauditoriaUid = null;
                             if (!Array.isArray(f.auditoresWifi)) f.auditoresWifi = [];
+                            if (f.DEPARTAMENTO === undefined) f.DEPARTAMENTO = ''; if (f.CIUDAD === undefined) f.CIUDAD = '';
+                            if (f.TIPO === undefined) f.TIPO = '';
+                            f.LATITUD = parsearCoordenada(f.LATITUD); f.LONGITUD = parsearCoordenada(f.LONGITUD);
                             if (!Array.isArray(f.supervisoresSeleccionados)) {
                                 f.supervisoresSeleccionados = f.supervisorSeleccionado ? [f.supervisorSeleccionado] : []; delete f.supervisorSeleccionado;
                             }
@@ -2004,7 +2211,7 @@
                 pfAgregarFila() {
                     if (this.noDrive()) return;
                     if (this.pfBloqueado) return;
-                    this.pfFilas.push({ _uid: nextUid(), NRO_SUCURSAL: '', ESTR_COD: '', ESTR_DESCRIPCION: '', UBIC_TIPO: '', UBIC_ABREVIATURA: '', AÑO_APER: '', Ultimo_Inventario: '', CLUS_DESCRIPCION: '', CANT_GONDOLAS: '', ESTR_GRUPOS: '', ENCAR_FCH_NACI: '', ANTIGUEDAD_ENCAR: '', ESTR_DESCRI: '', NOMBRE_ENCARGADO: '', NOMBRE_SUPERVISOR: '', NOMBRE_ADMINITRATIVO: '', personasSeleccionadas: [], auditoresWifi: [], personaTemp: '', supervisorTemp: '', horaConvocatoria: '07:30', horaSalida: '17:30', dias: null, colorClase: '', seleccionado: true, estado: 'pendiente', motivoReauditoria: null, supervisoresSeleccionados: [], esReauditoria: false, tieneReauditoria: false, origenUid: null, reauditoriaUid: null });
+                    this.pfFilas.push({ _uid: nextUid(), NRO_SUCURSAL: '', ESTR_COD: '', ESTR_DESCRIPCION: '', UBIC_TIPO: '', UBIC_ABREVIATURA: '', AÑO_APER: '', Ultimo_Inventario: '', CLUS_DESCRIPCION: '', CANT_GONDOLAS: '', ESTR_GRUPOS: '', ENCAR_FCH_NACI: '', ANTIGUEDAD_ENCAR: '', ESTR_DESCRI: '', NOMBRE_ENCARGADO: '', NOMBRE_SUPERVISOR: '', NOMBRE_ADMINITRATIVO: '', DEPARTAMENTO: '', CIUDAD: '', LATITUD: null, LONGITUD: null, TIPO: '', personasSeleccionadas: [], auditoresWifi: [], personaTemp: '', supervisorTemp: '', horaConvocatoria: '07:30', horaSalida: '17:30', dias: null, colorClase: '', seleccionado: true, estado: 'pendiente', motivoReauditoria: null, supervisoresSeleccionados: [], esReauditoria: false, tieneReauditoria: false, origenUid: null, reauditoriaUid: null });
                     this.marcarUidLocal(this.pfFilas[this.pfFilas.length - 1]._uid);
                     this.registrarBitacora('PF', 'Alta manual', 'Se agregó un nuevo PDV.');
                 },
@@ -2069,7 +2276,7 @@
                             let importados = 0;
                             jsonData.forEach(row => {
                                 let fechaConvertida = row['Ultimo Inventario'] ? convertirFecha(row['Ultimo Inventario']) : '';
-                                const fila = { _uid: nextUid(), NRO_SUCURSAL: row['NRO_SUCURSAL'] || '', ESTR_COD: row['ESTR_COD'] || '', ESTR_DESCRIPCION: row['ESTR_DESCRIPCION'] || row['Columna1'] || '', UBIC_TIPO: row['UBIC_TIPO'] || '', UBIC_ABREVIATURA: row['UBIC_ABREVIATURA'] || '', AÑO_APER: row['AÑO_APER'] || '', Ultimo_Inventario: fechaConvertida, CLUS_DESCRIPCION: row['CLUS_DESCRIPCION'] || '', CANT_GONDOLAS: row['CANT_GONDOLAS'] || '', ESTR_GRUPOS: row['ESTR_GRUPOS'] || '', ENCAR_FCH_NACI: row['ENCAR_FCH_NACI'] || '', ANTIGUEDAD_ENCAR: row['ANTIGUEDAD_ENCAR'] || '', ESTR_DESCRI: row['ESTR_DESCRI'] || '', NOMBRE_ENCARGADO: row['NOMBRE_ENCARGADO'] || '', NOMBRE_SUPERVISOR: row['NOMBRE_SUPERVISOR'] || '', NOMBRE_ADMINITRATIVO: row['NOMBRE_ADMINITRATIVO'] || '', personasSeleccionadas: [], auditoresWifi: [], personaTemp: '', supervisorTemp: '', horaConvocatoria: row['HORA_CONVOCATORIA'] || '07:30', horaSalida: row['HORA_SALIDA'] || '17:30', seleccionado: true, estado: 'pendiente', motivoReauditoria: null, supervisoresSeleccionados: [], esReauditoria: false, tieneReauditoria: false, origenUid: null, reauditoriaUid: null };
+                                const fila = { _uid: nextUid(), NRO_SUCURSAL: row['NRO_SUCURSAL'] || '', ESTR_COD: row['ESTR_COD'] || '', ESTR_DESCRIPCION: row['ESTR_DESCRIPCION'] || row['Columna1'] || '', UBIC_TIPO: row['UBIC_TIPO'] || '', UBIC_ABREVIATURA: row['UBIC_ABREVIATURA'] || '', AÑO_APER: row['AÑO_APER'] || '', Ultimo_Inventario: fechaConvertida, CLUS_DESCRIPCION: row['CLUS_DESCRIPCION'] || '', CANT_GONDOLAS: row['CANT_GONDOLAS'] || '', ESTR_GRUPOS: row['ESTR_GRUPOS'] || '', ENCAR_FCH_NACI: row['ENCAR_FCH_NACI'] || '', ANTIGUEDAD_ENCAR: row['ANTIGUEDAD_ENCAR'] || '', ESTR_DESCRI: row['ESTR_DESCRI'] || '', NOMBRE_ENCARGADO: row['NOMBRE_ENCARGADO'] || '', NOMBRE_SUPERVISOR: row['NOMBRE_SUPERVISOR'] || '', NOMBRE_ADMINITRATIVO: row['NOMBRE_ADMINITRATIVO'] || '', DEPARTAMENTO: String(row['DEPARTAMENTO'] || row['Departamento'] || '').trim(), CIUDAD: String(row['CIUDAD'] || row['Ciudad'] || '').trim(), LATITUD: parsearCoordenada(row['LATITUD'] !== undefined ? row['LATITUD'] : row['Latitud']), LONGITUD: parsearCoordenada(row['LONGITUD'] !== undefined ? row['LONGITUD'] : row['Longitud']), TIPO: String(row['TIPO'] || row['Tipo'] || '').trim(), personasSeleccionadas: [], auditoresWifi: [], personaTemp: '', supervisorTemp: '', horaConvocatoria: row['HORA_CONVOCATORIA'] || '07:30', horaSalida: row['HORA_SALIDA'] || '17:30', seleccionado: true, estado: 'pendiente', motivoReauditoria: null, supervisoresSeleccionados: [], esReauditoria: false, tieneReauditoria: false, origenUid: null, reauditoriaUid: null };
                                 fila.dias = calcularDiasDesde(fila.Ultimo_Inventario); fila.colorClase = getColorClase(fila.dias);
                                 this.marcarUidLocal(fila._uid); this.pfFilas.push(fila); importados++;
                             });
@@ -2104,7 +2311,7 @@
                     agendados.forEach(f => f.estado = 'generado'); const texto = this.generarTexto(agendados, false);
                     this.mostrarGenerado(texto, 'Puntos de Ventas', agendados.length, agendados);
                 },
-                pfMostrarRuta() { const agendados = this.pfFilas.filter(f => f.estado === 'agendado'); if (agendados.length === 0) return; this.mostrarRuta(agendados, 'Puntos de Ventas'); },
+                pfMostrarRuta() { const agendados = this.pfFilas.filter(f => f.estado === 'agendado'); this.mostrarRuta(agendados, 'Puntos de Ventas'); },
                 pfAbrirReauditar() { if (this.pfFilas.filter(f => f.seleccionado && (f.estado === 'auditado' || f.estado === 'reauditado')).length === 0) return; this.reauditarModulo = 'pf'; this.reauditarMotivo = null; this.reauditarMostrar = true; },
                 pfExportarCSV() { this.exportarCSV('pf'); },
 
@@ -2312,7 +2519,56 @@
                     const supervisores = (fila.supervisoresSeleccionados && fila.supervisoresSeleccionados.length > 0) ? fila.supervisoresSeleccionados : (personas.length > 0 ? [personas[0]] : []);
                     return personas.filter(p => !supervisores.includes(p)).length;
                 },
-                mostrarRuta(puntos, titulo) { this.rutaTitulo = titulo; this.rutaPuntos = [...puntos].sort((a, b) => parseInt(String(a.NRO_SUCURSAL || a.DEPOSITO).replace(/\D/g, '')) - parseInt(String(b.NRO_SUCURSAL || b.DEPOSITO).replace(/\D/g, ''))); this.rutaMostrar = true; },
+                mostrarRuta(puntos, titulo) { this.rutaTitulo = titulo; this.rutaPuntos = [...puntos].sort((a, b) => parseInt(String(a.NRO_SUCURSAL || a.DEPOSITO).replace(/\D/g, '')) - parseInt(String(b.NRO_SUCURSAL || b.DEPOSITO).replace(/\D/g, ''))); this.rutaTab = 'agendados'; this.rutaMostrar = true; },
+                // ===== Métodos Armar Ruta Viaje =====
+                formatearKm(km) { return km === null || km === undefined ? 'S/D' : km.toFixed(1).replace('.', ',') + ' km'; },
+                formatearHoras(horas) { if (!horas || !isFinite(horas)) return '-'; const h = Math.floor(horas); const m = Math.round((horas - h) * 60); return (h > 0 ? h + ' h ' : '') + m + ' min'; },
+                viajeAgregar(fila) { if (!this.viajeSeleccionUids.includes(fila._uid)) this.viajeSeleccionUids.push(fila._uid); },
+                viajeQuitar(idx) { this.viajeSeleccionUids.splice(idx, 1); },
+                viajeSubir(idx) { if (idx <= 0) return; const arr = this.viajeSeleccionUids; [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]]; this.viajeSeleccionUids = [...arr]; },
+                viajeBajar(idx) { const arr = this.viajeSeleccionUids; if (idx >= arr.length - 1) return; [arr[idx + 1], arr[idx]] = [arr[idx], arr[idx + 1]]; this.viajeSeleccionUids = [...arr]; },
+                viajeLimpiar() { this.viajeSeleccionUids = []; },
+                viajeAgregarTodosFiltrados() { this.viajePdvsDisponibles.forEach(f => this.viajeAgregar(f)); },
+                viajeOptimizar() {
+                    // Vecino más cercano: reordena la selección minimizando la distancia desde el punto de partida
+                    const puntos = this.viajePuntosSeleccionados.filter(f => parsearCoordenada(f.LATITUD) !== null && parsearCoordenada(f.LONGITUD) !== null);
+                    const sinCoords = this.viajePuntosSeleccionados.filter(f => parsearCoordenada(f.LATITUD) === null || parsearCoordenada(f.LONGITUD) === null);
+                    if (puntos.length < 2) { this.notificar('Se necesitan al menos 2 puntos con coordenadas para optimizar.', 'warning'); return; }
+                    let actual = { lat: PUNTO_PARTIDA.lat, lng: PUNTO_PARTIDA.lng }; const pendientes = [...puntos]; const orden = [];
+                    while (pendientes.length > 0) {
+                        let mejorIdx = 0; let mejorDist = Infinity;
+                        pendientes.forEach((p, i) => { const d = haversineKm(actual, { lat: parsearCoordenada(p.LATITUD), lng: parsearCoordenada(p.LONGITUD) }); if (d !== null && d < mejorDist) { mejorDist = d; mejorIdx = i; } });
+                        const elegido = pendientes.splice(mejorIdx, 1)[0]; orden.push(elegido);
+                        actual = { lat: parsearCoordenada(elegido.LATITUD), lng: parsearCoordenada(elegido.LONGITUD) };
+                    }
+                    this.viajeSeleccionUids = [...orden.map(f => f._uid), ...sinCoords.map(f => f._uid)];
+                    this.notificar('Ruta optimizada por cercanía.', 'success');
+                },
+                viajeAbrirGoogleMaps() {
+                    const coords = this.viajePuntosSeleccionados.map(f => ({ lat: parsearCoordenada(f.LATITUD), lng: parsearCoordenada(f.LONGITUD) })).filter(c => c.lat !== null && c.lng !== null);
+                    if (coords.length === 0) { this.notificar('Ningún punto seleccionado tiene coordenadas.', 'warning'); return; }
+                    const origen = `${PUNTO_PARTIDA.lat},${PUNTO_PARTIDA.lng}`;
+                    const destino = this.viajeIdaVuelta ? origen : `${coords[coords.length - 1].lat},${coords[coords.length - 1].lng}`;
+                    const waypoints = (this.viajeIdaVuelta ? coords : coords.slice(0, -1)).map(c => `${c.lat},${c.lng}`).join('|');
+                    let url = `https://www.google.com/maps/dir/?api=1&origin=${origen}&destination=${destino}&travelmode=driving`;
+                    if (waypoints) url += `&waypoints=${encodeURIComponent(waypoints)}`;
+                    window.open(url, '_blank', 'noopener');
+                },
+                viajeCopiarResumen() {
+                    const r = this.viajeRuta; if (this.viajePuntosSeleccionados.length === 0) return;
+                    let texto = `🚐 *RUTA DE VIAJE* (${this.viajeIdaVuelta ? 'ida y vuelta' : 'solo ida'})\n📍 Salida: ${PUNTO_PARTIDA.nombre}\n\n`;
+                    r.tramos.forEach(t => { texto += `${t.orden}. ${t.desde} ➜ ${t.hasta}: ${this.formatearKm(t.km)}\n`; });
+                    texto += `\n📏 *Total estimado: ${this.formatearKm(r.totalKm)}*\n⏱️ Tiempo aprox. de manejo: ${this.formatearHoras(r.horas)} (a ${this.viajeVelocidad} km/h)\n_Cálculo estimado por camino (factor ${this.viajeFactorRuta}x sobre línea recta)._`;
+                    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(texto).then(() => this.notificar('Resumen copiado al portapapeles.', 'success')).catch(() => this.notificar('No se pudo copiar.', 'error')); }
+                    else { this.notificar('El navegador no permite copiar automáticamente.', 'warning'); }
+                },
+                viajeCompartirWhatsApp() {
+                    const r = this.viajeRuta; if (this.viajePuntosSeleccionados.length === 0) return;
+                    let texto = `🚐 *RUTA DE VIAJE* (${this.viajeIdaVuelta ? 'ida y vuelta' : 'solo ida'})\n📍 Salida: ${PUNTO_PARTIDA.nombre}\n\n`;
+                    r.tramos.forEach(t => { texto += `${t.orden}. ${t.desde} ➜ ${t.hasta}: ${this.formatearKm(t.km)}\n`; });
+                    texto += `\n📏 *Total estimado: ${this.formatearKm(r.totalKm)}*\n⏱️ Tiempo aprox.: ${this.formatearHoras(r.horas)}`;
+                    window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank', 'noopener');
+                },
                 reauditarConfirmar() {
                     if (this.noDrive()) return;
                     if (!this.reauditarMotivo) return; const data = this.reauditarModulo === 'pf' ? this.pfFilas : this.clFilas;
@@ -2336,13 +2592,13 @@
                     if (data.length === 0) return;
                     let headers = modulo === 'cl' ? 
                         ['DEPOSITO', 'SECTOR', 'Ultimo Inventario', 'Días', 'HORA_CONVOCATORIA', 'HORA_SALIDA', 'PERSONAS_ASIGNADAS', 'SUPERVISORES', 'CANT_AUDITORES_SIN_SUP', 'AUDITORES_WIFI', 'SELECCIONADO', 'ESTADO', 'MOTIVO', 'ES_REAUDITORIA', 'TIENE_REAUDITORIA'] : 
-                        ['NRO_SUCURSAL', 'ESTR_COD', 'ESTR_DESCRIPCION', 'UBIC_TIPO', 'UBIC_ABREVIATURA', 'AÑO_APER', 'Ultimo Inventario', 'Días', 'HORA_CONVOCATORIA', 'HORA_SALIDA', 'CLUS_DESCRIPCION', 'CANT_GONDOLAS', 'ESTR_GRUPOS', 'ENCAR_FCH_NACI', 'ANTIGUEDAD_ENCAR', 'ESTR_DESCRI', 'NOMBRE_ENCARGADO', 'NOMBRE_SUPERVISOR', 'NOMBRE_ADMINITRATIVO', 'PERSONAS_ASIGNADAS', 'SUPERVISORES', 'CANT_AUDITORES_SIN_SUP', 'AUDITORES_WIFI', 'SELECCIONADO', 'ESTADO', 'MOTIVO', 'ES_REAUDITORIA', 'TIENE_REAUDITORIA'];
+                        ['NRO_SUCURSAL', 'ESTR_COD', 'ESTR_DESCRIPCION', 'UBIC_TIPO', 'UBIC_ABREVIATURA', 'AÑO_APER', 'Ultimo Inventario', 'Días', 'HORA_CONVOCATORIA', 'HORA_SALIDA', 'CLUS_DESCRIPCION', 'CANT_GONDOLAS', 'ESTR_GRUPOS', 'ENCAR_FCH_NACI', 'ANTIGUEDAD_ENCAR', 'ESTR_DESCRI', 'NOMBRE_ENCARGADO', 'NOMBRE_SUPERVISOR', 'NOMBRE_ADMINITRATIVO', 'DEPARTAMENTO', 'CIUDAD', 'LATITUD', 'LONGITUD', 'TIPO', 'PERSONAS_ASIGNADAS', 'SUPERVISORES', 'CANT_AUDITORES_SIN_SUP', 'AUDITORES_WIFI', 'SELECCIONADO', 'ESTADO', 'MOTIVO', 'ES_REAUDITORIA', 'TIENE_REAUDITORIA'];
                     const escaparCsv = (valor) => `"${String(valor === null || valor === undefined ? '' : valor).replace(/"/g, '""')}"`;
                     let csv = '\uFEFF' + headers.map(escaparCsv).join(',') + '\n';
                     data.forEach(f => {
                         let row = modulo === 'cl' ? 
                             [f.DEPOSITO || '', f.SECTOR || '', f.Ultimo_Inventario || '', f.dias !== null ? f.dias : '', f.horaConvocatoria || '', f.horaSalida || '', f.personasSeleccionadas.join('; '), (f.supervisoresSeleccionados || []).join('; '), this.cantAuditoresNetos(f), (f.auditoresWifi || []).join('; '), f.seleccionado ? 'Sí' : 'No', f.estado, f.motivoReauditoria || '', f.esReauditoria ? 'Sí' : 'No', f.tieneReauditoria ? 'Sí' : 'No'] : 
-                            [f.NRO_SUCURSAL || '', f.ESTR_COD || '', f.ESTR_DESCRIPCION || '', f.UBIC_TIPO || '', f.UBIC_ABREVIATURA || '', f.AÑO_APER || '', f.Ultimo_Inventario || '', f.dias !== null ? f.dias : '', f.horaConvocatoria || '', f.horaSalida || '', f.CLUS_DESCRIPCION || '', f.CANT_GONDOLAS || '', f.ESTR_GRUPOS || '', f.ENCAR_FCH_NACI || '', f.ANTIGUEDAD_ENCAR || '', f.ESTR_DESCRI || '', f.NOMBRE_ENCARGADO || '', f.NOMBRE_SUPERVISOR || '', f.NOMBRE_ADMINITRATIVO || '', f.personasSeleccionadas.join('; '), (f.supervisoresSeleccionados || []).join('; '), this.cantAuditoresNetos(f), (f.auditoresWifi || []).join('; '), f.seleccionado ? 'Sí' : 'No', f.estado, f.motivoReauditoria || '', f.esReauditoria ? 'Sí' : 'No', f.tieneReauditoria ? 'Sí' : 'No'];
+                            [f.NRO_SUCURSAL || '', f.ESTR_COD || '', f.ESTR_DESCRIPCION || '', f.UBIC_TIPO || '', f.UBIC_ABREVIATURA || '', f.AÑO_APER || '', f.Ultimo_Inventario || '', f.dias !== null ? f.dias : '', f.horaConvocatoria || '', f.horaSalida || '', f.CLUS_DESCRIPCION || '', f.CANT_GONDOLAS || '', f.ESTR_GRUPOS || '', f.ENCAR_FCH_NACI || '', f.ANTIGUEDAD_ENCAR || '', f.ESTR_DESCRI || '', f.NOMBRE_ENCARGADO || '', f.NOMBRE_SUPERVISOR || '', f.NOMBRE_ADMINITRATIVO || '', f.DEPARTAMENTO || '', f.CIUDAD || '', f.LATITUD !== null && f.LATITUD !== undefined ? f.LATITUD : '', f.LONGITUD !== null && f.LONGITUD !== undefined ? f.LONGITUD : '', f.TIPO || '', f.personasSeleccionadas.join('; '), (f.supervisoresSeleccionados || []).join('; '), this.cantAuditoresNetos(f), (f.auditoresWifi || []).join('; '), f.seleccionado ? 'Sí' : 'No', f.estado, f.motivoReauditoria || '', f.esReauditoria ? 'Sí' : 'No', f.tieneReauditoria ? 'Sí' : 'No'];
                         csv += row.map(escaparCsv).join(',') + '\n';
                     });
                     const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); link.download = `cronograma_${modulo}_${new Date().toISOString().slice(0, 10)}.csv`; document.body.appendChild(link); link.click(); document.body.removeChild(link);
