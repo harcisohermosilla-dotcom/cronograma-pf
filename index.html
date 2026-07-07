@@ -337,6 +337,21 @@
         .ruta-subtab { flex: 1; border: none; background: transparent; padding: 8px 12px; border-radius: 10px; font-size: 0.8rem; font-weight: 600; color: #64748b; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
         .ruta-subtab:hover { color: #0f2b4b; }
         .ruta-subtab.active { background: white; color: #ec4899; box-shadow: 0 2px 8px rgba(15,23,42,0.10); }
+        /* Historial de viajes guardados */
+        .viaje-hist-card { border: 1px solid #e2e8f0; border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; background: #fdfdff; transition: 0.2s; }
+        .viaje-hist-card:hover { box-shadow: 0 4px 14px rgba(15,23,42,0.08); border-color: #f9a8d4; }
+        .viaje-hist-card.editando { border-color: #ec4899; background: #fdf2f8; }
+        .viaje-hist-cabecera { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .viaje-hist-nombre { font-weight: 700; color: #0f2b4b; font-size: 0.9rem; flex: 1; }
+        .viaje-hist-fecha { font-size: 0.7rem; color: #be185d; background: #fce7f3; padding: 2px 10px; border-radius: 20px; font-weight: 600; white-space: nowrap; }
+        .viaje-hist-meta { font-size: 0.68rem; color: #64748b; margin-top: 4px; }
+        .viaje-hist-paradas { font-size: 0.66rem; color: #475569; margin-top: 6px; line-height: 1.5; }
+        .viaje-hist-acciones { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+        .viaje-hist-acciones .btn { font-size: 0.62rem; padding: 5px 10px; }
+        .viaje-badge-contador { background: #fce7f3; color: #be185d; border-radius: 20px; padding: 1px 8px; font-size: 0.62rem; font-weight: 700; margin-left: 4px; }
+        .viaje-agendar-barra { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; padding: 10px 12px; background: #fdf2f8; border: 1px dashed #f9a8d4; border-radius: 12px; }
+        .viaje-agendar-barra input[type="text"] { flex: 1; min-width: 160px; border: 1px solid #f3cfe1; border-radius: 8px; padding: 7px 10px; font-size: 0.75rem; }
+        .viaje-agendar-barra input[type="date"] { border: 1px solid #f3cfe1; border-radius: 8px; padding: 6px 8px; font-size: 0.75rem; }
         /* Armar Ruta Viaje */
         .viaje-filtros { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
         .viaje-buscador { flex: 1; min-width: 200px; display: flex; align-items: center; gap: 8px; background: #f8faff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 6px 12px; }
@@ -1137,6 +1152,7 @@
             <div class="ruta-submenu">
                 <button class="ruta-subtab" :class="{ active: rutaTab === 'agendados' }" @click="rutaTab = 'agendados'"><i class="fas fa-calendar-check"></i> Ruta Agendados</button>
                 <button class="ruta-subtab" :class="{ active: rutaTab === 'viaje' }" @click="rutaTab = 'viaje'"><i class="fas fa-bus"></i> Armar Ruta Viaje</button>
+                <button class="ruta-subtab" :class="{ active: rutaTab === 'historial' }" @click="rutaTab = 'historial'"><i class="fas fa-history"></i> Historial de Viajes<span class="viaje-badge-contador" v-if="viajesGuardados.length > 0">{{ viajesGuardados.length }}</span></button>
             </div>
 
             <!-- Sub-menú 1: ruta de puntos agendados (comportamiento original) -->
@@ -1246,6 +1262,59 @@
                             <button class="btn btn-success btn-sm" @click="viajeAbrirGoogleMaps"><i class="fas fa-map-marked-alt"></i> Ver en Google Maps</button>
                             <button class="btn btn-outline btn-sm" @click="viajeCopiarResumen"><i class="fas fa-copy"></i> Copiar resumen</button>
                             <button class="btn whatsapp-share btn-sm" @click="viajeCompartirWhatsApp"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+                        </div>
+                        <!-- Agendar viaje en el historial -->
+                        <div class="viaje-agendar-barra">
+                            <i class="fas fa-calendar-plus" style="color:#ec4899;"></i>
+                            <input type="text" v-model="viajeNombre" placeholder="Nombre del viaje (ej: Viaje Sur - Semana 28)" maxlength="60">
+                            <input type="date" v-model="viajeFecha" title="Fecha programada del viaje">
+                            <button class="btn btn-ruta btn-sm" @click="viajeAgendar"><i class="fas fa-save"></i> {{ viajeEditandoId ? 'Guardar cambios' : 'Agendar viaje' }}</button>
+                            <button class="btn btn-outline btn-sm" v-if="viajeEditandoId" @click="viajeCancelarEdicion"><i class="fas fa-times"></i> Cancelar edición</button>
+                        </div>
+                        <p v-if="viajeEditandoId" style="font-size:0.65rem; color:#be185d; margin-top:6px;"><i class="fas fa-pen"></i> Estás editando un viaje agendado. Al guardar se actualizará en el historial.</p>
+                    </div>
+                </div>
+            </div>
+            <!-- Sub-menú 3: Historial de viajes agendados -->
+            <div v-if="rutaTab === 'historial'">
+                <p style="color:#64748b; margin-bottom:10px; font-size:0.82rem;">
+                    <i class="fas fa-history" style="color:#ec4899;"></i> Viajes agendados: <strong>{{ viajesGuardados.length }}</strong>.
+                    Desde acá podés ver el detalle, editar, eliminar o compartir cada viaje preparado.
+                </p>
+                <div v-if="viajesGuardados.length === 0" style="text-align:center; padding:30px; color:#64748b; background:#f8faff; border-radius:14px; border:1px dashed #cbd5e1;">
+                    <i class="fas fa-route" style="font-size:2.2rem; color:#94a3b8;"></i>
+                    <p style="margin-top:10px;">Todavía no agendaste ningún viaje.<br>Armá una ruta en <strong>Armar Ruta Viaje</strong> y presioná <strong>Agendar viaje</strong>.</p>
+                </div>
+                <div v-else>
+                    <div class="viaje-buscador" style="margin-bottom:12px;"><i class="fas fa-search"></i><input type="text" v-model="viajeHistorialBusqueda" placeholder="Buscar viaje por nombre, ciudad o PDV..."></div>
+                    <div v-if="viajesGuardadosFiltrados.length === 0" style="padding:16px; text-align:center; color:#94a3b8; font-size:0.75rem;">Sin resultados con esa búsqueda.</div>
+                    <div class="viaje-hist-card" :class="{ editando: viajeEditandoId === v.id }" v-for="v in viajesGuardadosFiltrados" :key="v.id">
+                        <div class="viaje-hist-cabecera">
+                            <span class="viaje-hist-nombre"><i class="fas fa-bus" style="color:#ec4899; margin-right:6px;"></i>{{ v.nombre }}</span>
+                            <span class="viaje-hist-fecha" v-if="v.fecha"><i class="fas fa-calendar-day"></i> {{ formatearFechaViaje(v.fecha) }}</span>
+                            <span class="viaje-hist-fecha" v-else style="background:#f1f5f9; color:#64748b;">Sin fecha</span>
+                        </div>
+                        <div class="viaje-hist-meta">
+                            <i class="fas fa-map-marker-alt"></i> {{ v.puntos.length }} parada(s)
+                            · <i class="fas fa-tachometer-alt"></i> {{ formatearKm(v.totalKm) }}
+                            · <i class="fas fa-clock"></i> {{ formatearHoras(v.horas) }}
+                            · {{ v.idaVuelta ? 'Ida y vuelta' : 'Solo ida' }}
+                            · <span style="color:#94a3b8;">Creado: {{ formatearFechaHoraViaje(v.creadoEn) }}<span v-if="v.actualizadoEn"> · Editado: {{ formatearFechaHoraViaje(v.actualizadoEn) }}</span></span>
+                        </div>
+                        <div class="viaje-hist-paradas" v-if="viajeHistorialDetalleId === v.id">
+                            <div v-for="(p, idx) in v.puntos" :key="idx">
+                                <span style="font-weight:700; color:#2563eb;">{{ idx + 1 }}.</span>
+                                {{ p.nro ? 'PDV ' + p.nro : 'S/N' }} - {{ p.descripcion || 'Sin descripción' }}
+                                <span style="color:#94a3b8;">({{ p.ciudad || 'Sin ciudad' }}<span v-if="p.departamento">, {{ p.departamento }}</span>)</span>
+                                <span v-if="p.lat == null || p.lng == null" class="viaje-badge-warn">⚠ sin coordenadas</span>
+                            </div>
+                        </div>
+                        <div class="viaje-hist-acciones">
+                            <button class="btn btn-outline" @click="viajeHistorialDetalleId = viajeHistorialDetalleId === v.id ? null : v.id"><i class="fas" :class="viajeHistorialDetalleId === v.id ? 'fa-eye-slash' : 'fa-eye'"></i> {{ viajeHistorialDetalleId === v.id ? 'Ocultar detalle' : 'Ver detalle' }}</button>
+                            <button class="btn btn-primary" @click="viajeEditarGuardado(v)"><i class="fas fa-pen"></i> Editar</button>
+                            <button class="btn btn-success" @click="viajeVerGuardadoEnMaps(v)"><i class="fas fa-map-marked-alt"></i> Google Maps</button>
+                            <button class="btn whatsapp-share" @click="viajeCompartirGuardadoWhatsApp(v)"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+                            <button class="btn btn-outline" style="color:#dc2626; border-color:#fecaca;" @click="viajeEliminarGuardado(v)"><i class="fas fa-trash"></i> Eliminar</button>
                         </div>
                     </div>
                 </div>
@@ -1559,6 +1628,7 @@
                 clBuscar: '', clSector: '', clFiltroDias: '', clFiltroEstado: '', clSeleccionarTodos: true, clNuevoAuditorNombre: '', clMostrarResumen: false, clBloqueado: false,
                 motivosReauditoria: motivosReauditoria, reauditarMostrar: false, reauditarModulo: 'pf', reauditarMotivo: null, rutaMostrar: false, rutaTitulo: '', rutaPuntos: [], rutaTiempo: 0,
                 rutaTab: 'agendados', viajeBusqueda: '', viajeDepartamento: '', viajeCiudad: '', viajeSeleccionUids: [], viajeIdaVuelta: true, viajeFactorRuta: 1.3, viajeVelocidad: 60,
+                viajesGuardados: [], viajeNombre: '', viajeFecha: '', viajeEditandoId: null, viajeHistorialBusqueda: '', viajeHistorialDetalleId: null,
                 motivosAusencia: motivosAusencia, ausenteMostrar: false, ausenteMotivo: null, ausenteMotivoOtro: '', auditoresModalSeleccionados: [],
                 generadoMostrar: false, generadoModulo: '', generadoCantidad: 0, generadoFecha: '', generadoTexto: '', generadoTextoHtml: '', generadoPuntos: [], generadoVecesCompartido: 0,
                 eliminarMostrar: false, eliminarModulo: 'pf', eliminarPassword: '',
@@ -1615,6 +1685,17 @@
                 },
                 viajePuntosSeleccionados() {
                     return this.viajeSeleccionUids.map(uid => this.pfFilas.find(f => f._uid === uid)).filter(Boolean);
+                },
+                viajesGuardadosFiltrados() {
+                    // Ordenados por fecha programada (los sin fecha al final) y filtrados por búsqueda
+                    const q = this.viajeHistorialBusqueda.trim().toLowerCase();
+                    const lista = [...this.viajesGuardados].sort((a, b) => {
+                        if (a.fecha && b.fecha) return a.fecha.localeCompare(b.fecha);
+                        if (a.fecha) return -1; if (b.fecha) return 1;
+                        return (b.creadoEn || '').localeCompare(a.creadoEn || '');
+                    });
+                    if (!q) return lista;
+                    return lista.filter(v => (v.nombre || '').toLowerCase().includes(q) || v.puntos.some(p => (p.ciudad || '').toLowerCase().includes(q) || (p.departamento || '').toLowerCase().includes(q) || String(p.nro || '').toLowerCase().includes(q) || (p.descripcion || '').toLowerCase().includes(q)));
                 },
                 viajeRuta() {
                     // Construye los tramos: Partida → Punto 1 → Punto 2 → … (→ Partida si es ida y vuelta)
@@ -1681,6 +1762,7 @@
                 pfFilas: { handler() { this.guardarTodo(); }, deep: true }, clFilas: { handler() { this.guardarTodo(); }, deep: true },
                 auditores: { handler() { this.guardarTodo(); }, deep: true }, auditoresAusentes: { handler() { this.guardarTodo(); }, deep: true },
                 pfBloqueado() { this.guardarTodo(); }, clBloqueado() { this.guardarTodo(); }, bitacora: { handler() { this.guardarTodo(); }, deep: true }, historialNotificaciones: { handler() { this.guardarTodo(); }, deep: true },
+                viajesGuardados: { handler() { this.guardarTodo(); }, deep: true },
                 filasCriticas: { handler(nuevas) { this.procesarAlertasCriticas(nuevas); }, deep: true },
             },
             created() {
@@ -1771,6 +1853,7 @@
                         if (typeof data.pfBloqueado === 'boolean') this.pfBloqueado = data.pfBloqueado; if (typeof data.clBloqueado === 'boolean') this.clBloqueado = data.clBloqueado;
                         if (Array.isArray(data.bitacora)) this.bitacora = data.bitacora; if (Array.isArray(data.historialNotificaciones)) this.historialNotificaciones = data.historialNotificaciones;
                         if (data.ultimoMensajePF) this.ultimoMensajePF = data.ultimoMensajePF; if (data.ultimoMensajeCL) this.ultimoMensajeCL = data.ultimoMensajeCL;
+                        if (Array.isArray(data.viajesGuardados)) this.viajesGuardados = data.viajesGuardados.filter(v => v && v.id && Array.isArray(v.puntos));
                         
                         [...this.pfFilas, ...this.clFilas].forEach(f => {
                             if (!f._uid) f._uid = nextUid(); ajustarContadorUid(f._uid);
@@ -1795,7 +1878,7 @@
                     this.$nextTick(() => { setTimeout(() => { this._supresionGuardadoDrive = false; }, 200); });
                 },
                 construirPayload() {
-                    return { version: 1, guardadoEn: new Date().toISOString(), pfFilas: this.pfFilas, clFilas: this.clFilas, auditores: this.auditores, auditoresAusentes: this.auditoresAusentes, pfBloqueado: this.pfBloqueado, clBloqueado: this.clBloqueado, bitacora: this.bitacora, historialNotificaciones: this.historialNotificaciones, ultimoMensajePF: this.ultimoMensajePF, ultimoMensajeCL: this.ultimoMensajeCL };
+                    return { version: 1, guardadoEn: new Date().toISOString(), pfFilas: this.pfFilas, clFilas: this.clFilas, auditores: this.auditores, auditoresAusentes: this.auditoresAusentes, pfBloqueado: this.pfBloqueado, clBloqueado: this.clBloqueado, bitacora: this.bitacora, historialNotificaciones: this.historialNotificaciones, ultimoMensajePF: this.ultimoMensajePF, ultimoMensajeCL: this.ultimoMensajeCL, viajesGuardados: this.viajesGuardados };
                 },
                 guardarEnAlmacenamiento() {
                     this.guardando = true;
@@ -2567,6 +2650,96 @@
                     let texto = `🚐 *RUTA DE VIAJE* (${this.viajeIdaVuelta ? 'ida y vuelta' : 'solo ida'})\n📍 Salida: ${PUNTO_PARTIDA.nombre}\n\n`;
                     r.tramos.forEach(t => { texto += `${t.orden}. ${t.desde} ➜ ${t.hasta}: ${this.formatearKm(t.km)}\n`; });
                     texto += `\n📏 *Total estimado: ${this.formatearKm(r.totalKm)}*\n⏱️ Tiempo aprox.: ${this.formatearHoras(r.horas)}`;
+                    window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank', 'noopener');
+                },
+                // ===== Historial de viajes agendados =====
+                formatearFechaViaje(fechaIso) {
+                    if (!fechaIso) return '';
+                    const partes = String(fechaIso).split('-'); // YYYY-MM-DD sin problemas de zona horaria
+                    if (partes.length !== 3) return fechaIso;
+                    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+                },
+                formatearFechaHoraViaje(iso) {
+                    if (!iso) return '-';
+                    const d = new Date(iso);
+                    if (isNaN(d)) return '-';
+                    return d.toLocaleDateString('es-PY') + ' ' + d.toLocaleTimeString('es-PY', { hour: '2-digit', minute: '2-digit' });
+                },
+                viajeAgendar() {
+                    if (this.viajePuntosSeleccionados.length === 0) { this.notificar('Armá primero la ruta agregando al menos un PDV.', 'warning'); return; }
+                    const nombre = this.viajeNombre.trim() || `Viaje ${new Date().toLocaleDateString('es-PY')}`;
+                    const r = this.viajeRuta;
+                    // Snapshot de los puntos: el viaje guardado no depende de que la BD siga cargada igual
+                    const puntos = this.viajePuntosSeleccionados.map(f => ({
+                        uid: f._uid, nro: f.NRO_SUCURSAL || '', descripcion: f.ESTR_DESCRIPCION || '',
+                        ciudad: f.CIUDAD || '', departamento: f.DEPARTAMENTO || '',
+                        lat: parsearCoordenada(f.LATITUD), lng: parsearCoordenada(f.LONGITUD)
+                    }));
+                    const datos = {
+                        nombre, fecha: this.viajeFecha || '', idaVuelta: this.viajeIdaVuelta,
+                        factor: this.viajeFactorRuta, velocidad: this.viajeVelocidad,
+                        puntos, tramos: r.tramos.map(t => ({ ...t })), totalKm: r.totalKm, horas: r.horas
+                    };
+                    if (this.viajeEditandoId) {
+                        const idx = this.viajesGuardados.findIndex(v => v.id === this.viajeEditandoId);
+                        if (idx !== -1) {
+                            const original = this.viajesGuardados[idx];
+                            this.viajesGuardados.splice(idx, 1, { ...original, ...datos, actualizadoEn: new Date().toISOString() });
+                            this.notificar(`Viaje "${nombre}" actualizado en el historial.`, 'success');
+                        }
+                        this.viajeEditandoId = null;
+                    } else {
+                        this.viajesGuardados.push({ id: 'viaje_' + Date.now() + '_' + Math.floor(Math.random() * 10000), creadoEn: new Date().toISOString(), actualizadoEn: null, ...datos });
+                        this.notificar(`Viaje "${nombre}" agendado en el historial.`, 'success');
+                    }
+                    this.viajeNombre = ''; this.viajeFecha = '';
+                    this.rutaTab = 'historial';
+                },
+                viajeEditarGuardado(v) {
+                    // Carga el viaje guardado en "Armar Ruta Viaje" para modificarlo
+                    const uidsValidos = []; let faltantes = 0;
+                    v.puntos.forEach(p => {
+                        const fila = this.pfFilas.find(f => f._uid === p.uid) || this.pfFilas.find(f => String(f.NRO_SUCURSAL || '') === String(p.nro) && f.TIPO && String(f.TIPO).toLowerCase().includes('viaje'));
+                        if (fila) uidsValidos.push(fila._uid); else faltantes++;
+                    });
+                    this.viajeSeleccionUids = uidsValidos;
+                    this.viajeIdaVuelta = v.idaVuelta !== false;
+                    this.viajeFactorRuta = v.factor || 1.3;
+                    this.viajeVelocidad = v.velocidad || 60;
+                    this.viajeNombre = v.nombre || '';
+                    this.viajeFecha = v.fecha || '';
+                    this.viajeEditandoId = v.id;
+                    this.rutaTab = 'viaje';
+                    if (faltantes > 0) this.notificar(`${faltantes} punto(s) del viaje ya no están en la base y no se cargaron.`, 'warning');
+                    else this.notificar('Viaje cargado para edición. Al finalizar presioná "Guardar cambios".', 'info');
+                },
+                viajeCancelarEdicion() {
+                    this.viajeEditandoId = null; this.viajeNombre = ''; this.viajeFecha = '';
+                    this.notificar('Edición cancelada. El viaje agendado no se modificó.', 'info');
+                },
+                viajeEliminarGuardado(v) {
+                    if (!window.confirm(`¿Eliminar el viaje "${v.nombre}" del historial? Esta acción no se puede deshacer.`)) return;
+                    this.viajesGuardados = this.viajesGuardados.filter(x => x.id !== v.id);
+                    if (this.viajeEditandoId === v.id) this.viajeCancelarEdicion();
+                    if (this.viajeHistorialDetalleId === v.id) this.viajeHistorialDetalleId = null;
+                    this.notificar(`Viaje "${v.nombre}" eliminado del historial.`, 'success');
+                },
+                viajeVerGuardadoEnMaps(v) {
+                    const coords = v.puntos.filter(p => p.lat !== null && p.lng !== null);
+                    if (coords.length === 0) { this.notificar('Ningún punto de este viaje tiene coordenadas.', 'warning'); return; }
+                    const origen = `${PUNTO_PARTIDA.lat},${PUNTO_PARTIDA.lng}`;
+                    const destino = v.idaVuelta ? origen : `${coords[coords.length - 1].lat},${coords[coords.length - 1].lng}`;
+                    const waypoints = (v.idaVuelta ? coords : coords.slice(0, -1)).map(c => `${c.lat},${c.lng}`).join('|');
+                    let url = `https://www.google.com/maps/dir/?api=1&origin=${origen}&destination=${destino}&travelmode=driving`;
+                    if (waypoints) url += `&waypoints=${encodeURIComponent(waypoints)}`;
+                    window.open(url, '_blank', 'noopener');
+                },
+                viajeCompartirGuardadoWhatsApp(v) {
+                    let texto = `🚐 *${v.nombre}* (${v.idaVuelta ? 'ida y vuelta' : 'solo ida'})\n`;
+                    if (v.fecha) texto += `📅 Fecha programada: ${this.formatearFechaViaje(v.fecha)}\n`;
+                    texto += `📍 Salida: ${PUNTO_PARTIDA.nombre}\n\n`;
+                    (v.tramos || []).forEach(t => { texto += `${t.orden}. ${t.desde} ➜ ${t.hasta}: ${this.formatearKm(t.km)}\n`; });
+                    texto += `\n📏 *Total estimado: ${this.formatearKm(v.totalKm)}*\n⏱️ Tiempo aprox.: ${this.formatearHoras(v.horas)} (a ${v.velocidad || 60} km/h)`;
                     window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank', 'noopener');
                 },
                 reauditarConfirmar() {
