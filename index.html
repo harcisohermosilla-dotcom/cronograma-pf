@@ -629,6 +629,10 @@
         <button class="tab-btn" :class="{ active: tabActivo === 'cl' }" @click="tabActivo = 'cl'">
             <i class="fas fa-warehouse"></i> Centro Logístico
         </button>
+        <button class="tab-btn" :class="{ active: tabActivo === 'historial' }" @click="tabActivo = 'historial'">
+            <i class="fas fa-history"></i> Historial
+            <span v-if="historialInventarios.length" style="background:#2563eb;color:white;border-radius:12px;padding:1px 7px;font-size:0.65rem;margin-left:4px;">{{ historialInventarios.length }}</span>
+        </button>
     </div>
 
     <!-- Módulo PF -->
@@ -735,6 +739,8 @@
                         <th style="min-width:55px;" title="Cantidad de auditores que fueron al PDV, sin contar al supervisor">Cant. Aud.</th>
                         <th style="min-width:80px;">Estado</th>
                         <th style="min-width:70px;">Motivo</th>
+                        <th style="min-width:110px;" title="Fecha en que se realizó el inventario (se congela al marcar Auditado)">📅 Fecha Inventario</th>
+                        <th style="min-width:80px;" title="Días transcurridos desde el último inventario (se congela al marcar Auditado)">🔒 Días (congelado)</th>
                         <th class="col-acciones">✕</th>
                     </tr>
                 </thead>
@@ -800,6 +806,18 @@
                             </div>
                         </td>
                         <td style="font-size:0.56rem; color:#64748b; max-width:100px; word-break:break-word;">{{ fila.motivoReauditoria || '-' }}</td>
+                        <td style="font-size:0.62rem; color:#0f2b4b; font-weight:600; white-space:nowrap;" :title="fila.fechaRealInventario ? '🔒 Fecha congelada al marcar Auditado' : 'Se congela automáticamente al marcar Auditado'">
+                            <span v-if="fila.fechaRealInventario" style="display:flex;align-items:center;gap:4px;">
+                                <i class="fas fa-lock" style="color:#7c3aed;font-size:0.55rem;"></i>{{ fila.fechaRealInventario }}
+                            </span>
+                            <span v-else style="color:#94a3b8;">—</span>
+                        </td>
+                        <td style="font-size:0.62rem; font-weight:700; white-space:nowrap; text-align:center;" :title="fila.diasCongelados !== undefined ? '🔒 Días congelados al marcar Auditado' : 'Se congela automáticamente al marcar Auditado'">
+                            <span v-if="fila.diasCongelados !== undefined" :class="fila.colorClaseCongelada" style="display:flex;align-items:center;gap:4px;justify-content:center;">
+                                <i class="fas fa-lock" style="color:#7c3aed;font-size:0.55rem;"></i>{{ fila.diasCongelados }}
+                            </span>
+                            <span v-else style="color:#94a3b8;">—</span>
+                        </td>
                         <td><button class="btn-eliminar-fila" @click="pfEliminarFila(index)"><i class="fas fa-trash-alt"></i></button></td>
                     </tr>
                 </tbody>
@@ -927,6 +945,8 @@
                         <th style="min-width:130px;">Supervisor(es)</th>
                         <th class="col-estado-cl">ESTADO</th>
                         <th class="col-motivo-cl">MOTIVO</th>
+                        <th style="min-width:110px;" title="Fecha en que se realizó el inventario (se congela al marcar Auditado)">📅 Fecha Inventario</th>
+                        <th style="min-width:80px;" title="Días desde el último inventario (congelado al marcar Auditado)">🔒 Días (congelado)</th>
                         <th class="col-acciones">✕</th>
                     </tr>
                 </thead>
@@ -982,6 +1002,18 @@
                             </div>
                         </td>
                         <td style="font-size:0.56rem; color:#64748b; max-width:100px; word-break:break-word;">{{ fila.motivoReauditoria || '-' }}</td>
+                        <td style="font-size:0.62rem; color:#0f2b4b; font-weight:600; white-space:nowrap;">
+                            <span v-if="fila.fechaRealInventario" style="display:flex;align-items:center;gap:4px;">
+                                <i class="fas fa-lock" style="color:#7c3aed;font-size:0.55rem;"></i>{{ fila.fechaRealInventario }}
+                            </span>
+                            <span v-else style="color:#94a3b8;">—</span>
+                        </td>
+                        <td style="font-size:0.62rem; font-weight:700; white-space:nowrap; text-align:center;">
+                            <span v-if="fila.diasCongelados !== undefined" :class="fila.colorClaseCongelada" style="display:flex;align-items:center;gap:4px;justify-content:center;">
+                                <i class="fas fa-lock" style="color:#7c3aed;font-size:0.55rem;"></i>{{ fila.diasCongelados }}
+                            </span>
+                            <span v-else style="color:#94a3b8;">—</span>
+                        </td>
                         <td><button class="btn-eliminar-fila" @click="clEliminarFila(index)"><i class="fas fa-trash-alt"></i></button></td>
                     </tr>
                 </tbody>
@@ -1420,6 +1452,190 @@
         </div>
     </div>
 
+    <!-- ============ MÓDULO HISTORIAL ============ -->
+    <div class="tab-content" :class="{ active: tabActivo === 'historial' }">
+        <div class="tabs" style="margin-bottom:18px;">
+            <button class="tab-btn" :class="{ active: historialSubTab === 'cronogramas' }" @click="historialSubTab = 'cronogramas'">
+                <i class="fas fa-calendar-alt"></i> Cronogramas
+            </button>
+            <button class="tab-btn" :class="{ active: historialSubTab === 'ausentes' }" @click="historialSubTab = 'ausentes'">
+                <i class="fas fa-user-slash"></i> Ausencias de Auditores
+            </button>
+        </div>
+
+        <!-- Sub-tab: Cronogramas históricos -->
+        <div v-if="historialSubTab === 'cronogramas'">
+            <div class="toolbar" style="flex-wrap:wrap; gap:10px; align-items:center;">
+                <span style="font-weight:700; color:#0f2b4b; font-size:0.9rem;"><i class="fas fa-history" style="color:#2563eb;"></i> Cronogramas guardados por fecha</span>
+                <div class="search-container">
+                    <i class="fas fa-search"></i>
+                    <input type="text" v-model="historialBuscar" placeholder="Buscar PDV, ciudad, depto...">
+                </div>
+                <div class="search-container" style="min-width:140px;">
+                    <i class="fas fa-calendar"></i>
+                    <input type="month" v-model="historialFiltroMes" style="border:none;outline:none;padding:4px 4px;font-size:0.75rem;background:transparent;" title="Filtrar por mes">
+                </div>
+                <div class="search-container" style="min-width:130px;">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <input type="text" v-model="historialFiltroCiudad" placeholder="Ciudad...">
+                </div>
+                <div class="search-container" style="min-width:130px;">
+                    <i class="fas fa-map"></i>
+                    <input type="text" v-model="historialFiltroDepto" placeholder="Departamento...">
+                </div>
+                <button class="btn btn-danger btn-sm" @click="limpiarHistorial" v-if="historialInventarios.length"><i class="fas fa-trash"></i> Limpiar historial</button>
+                <span class="badge badge-primary">{{ historialFiltrado.length }} cronograma(s)</span>
+            </div>
+
+            <div v-if="historialFiltrado.length === 0" style="text-align:center;padding:40px;color:#94a3b8;">
+                <i class="fas fa-history" style="font-size:2.5rem;display:block;margin-bottom:12px;"></i>
+                No hay cronogramas históricos.<br><small>Al marcar PDVs como <strong>Auditado</strong>, se guarda una instantánea automáticamente.</small>
+            </div>
+
+            <div v-for="entrada in historialFiltrado" :key="entrada.id" style="background:#f8faff;border:1px solid #e2e8f0;border-radius:16px;margin-bottom:16px;overflow:hidden;">
+                <div style="padding:12px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;cursor:pointer;background:white;" @click="historialToggleDetalle(entrada.id)">
+                    <i class="fas fa-calendar-check" style="color:#2563eb;font-size:1.2rem;"></i>
+                    <div>
+                        <div style="font-weight:700;color:#0f2b4b;font-size:0.9rem;">{{ formatearFechaHora(entrada.fecha) }}</div>
+                        <div style="font-size:0.72rem;color:#64748b;">Módulo: <strong>{{ entrada.modulo }}</strong> · {{ entrada.puntos.length }} PDV(s) auditado(s) · {{ entrada.totalAuditores }} auditor(es) distinto(s)</div>
+                    </div>
+                    <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+                        <span class="badge badge-success">✅ {{ entrada.puntos.length }} auditados</span>
+                        <i :class="historialDetalleId === entrada.id ? 'fas fa-chevron-up' : 'fas fa-chevron-down'" style="color:#94a3b8;"></i>
+                    </div>
+                </div>
+                <div v-if="historialDetalleId === entrada.id" style="padding:12px 18px;border-top:1px solid #e2e8f0;">
+                    <div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;">
+                        <div class="search-container" style="min-width:130px;">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <input type="text" v-model="entrada._filtroCiudad" placeholder="Filtrar ciudad...">
+                        </div>
+                        <div class="search-container" style="min-width:130px;">
+                            <i class="fas fa-map"></i>
+                            <input type="text" v-model="entrada._filtroDepto" placeholder="Filtrar depto...">
+                        </div>
+                        <div class="search-container" style="min-width:140px;">
+                            <i class="fas fa-user"></i>
+                            <input type="text" v-model="entrada._filtroAuditor" placeholder="Filtrar auditor...">
+                        </div>
+                    </div>
+                    <div class="table-wrapper">
+                        <table style="min-width:700px;">
+                            <thead>
+                                <tr>
+                                    <th>NRO / PDV</th>
+                                    <th>Descripción</th>
+                                    <th>Ciudad</th>
+                                    <th>Departamento</th>
+                                    <th>Auditores</th>
+                                    <th>Cant. Aud.</th>
+                                    <th>Supervisores</th>
+                                    <th>Estado</th>
+                                    <th>Fecha Real Inventario</th>
+                                    <th>Días transcurridos</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="p in historialPuntosFiltrados(entrada)" :key="p._uid || p.NRO_SUCURSAL">
+                                    <td>{{ p.NRO_SUCURSAL || p.DEPOSITO || 'S/N' }}</td>
+                                    <td>{{ p.ESTR_DESCRIPCION || p.SECTOR || '-' }}</td>
+                                    <td>{{ p.CIUDAD || '-' }}</td>
+                                    <td>{{ p.DEPARTAMENTO || '-' }}</td>
+                                    <td style="font-size:0.6rem;">{{ (p.personasSeleccionadas || []).map(obtenerNombreApellido).join(', ') || '-' }}</td>
+                                    <td style="text-align:center;">{{ (p.personasSeleccionadas || []).length }}</td>
+                                    <td style="font-size:0.6rem;">{{ (p.supervisoresSeleccionados || []).map(obtenerNombreApellido).join(', ') || '-' }}</td>
+                                    <td><span style="background:#bbf7d0;color:#166534;padding:2px 8px;border-radius:8px;font-size:0.6rem;font-weight:600;">✅ Auditado</span></td>
+                                    <td>{{ p.fechaRealInventario || p.Ultimo_Inventario || '-' }}</td>
+                                    <td>{{ p.diasCongelados !== undefined ? p.diasCongelados : (p.dias !== null ? p.dias : '-') }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Resumen de auditores del cronograma -->
+                    <div style="margin-top:12px;padding:10px 14px;background:#eef2ff;border-radius:10px;">
+                        <div style="font-weight:700;font-size:0.78rem;color:#1e3a6b;margin-bottom:6px;"><i class="fas fa-users"></i> Auditores que participaron en este cronograma</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                            <span v-for="aud in historialResumenAuditores(entrada)" :key="aud.nombre"
+                                style="background:white;border:1px solid #c7d2fe;border-radius:20px;padding:3px 10px;font-size:0.65rem;font-weight:600;color:#3730a3;">
+                                {{ obtenerNombreApellido(aud.nombre) }} <span style="color:#64748b;">({{ aud.count }} PDV)</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sub-tab: Ausencias -->
+        <div v-if="historialSubTab === 'ausentes'">
+            <div class="toolbar" style="flex-wrap:wrap; gap:10px; align-items:center;">
+                <span style="font-weight:700; color:#0f2b4b; font-size:0.9rem;"><i class="fas fa-user-slash" style="color:#dc2626;"></i> Reporte de Ausencias y Participación</span>
+                <div class="search-container">
+                    <i class="fas fa-search"></i>
+                    <input type="text" v-model="ausenciasFiltroPersoa" placeholder="Buscar auditor...">
+                </div>
+                <div class="search-container" style="min-width:130px;">
+                    <i class="fas fa-calendar"></i>
+                    <input type="date" v-model="ausenciasFiltroDesde" title="Desde">
+                    <span style="font-size:0.65rem;color:#94a3b8;margin:0 4px;">→</span>
+                    <input type="date" v-model="ausenciasFiltroHasta" title="Hasta">
+                </div>
+                <label style="display:flex;align-items:center;gap:6px;font-size:0.75rem;font-weight:600;cursor:pointer;">
+                    <input type="checkbox" v-model="ausenciasExcluirVacaciones" style="accent-color:#2563eb;width:14px;height:14px;">
+                    Excluir vacaciones del % participación
+                </label>
+                <span class="badge badge-primary">{{ ausenciasFiltradas.length }} auditor(es)</span>
+            </div>
+
+            <div v-if="ausenciasFiltradas.length === 0" style="text-align:center;padding:40px;color:#94a3b8;">
+                <i class="fas fa-user-check" style="font-size:2.5rem;display:block;margin-bottom:12px;color:#22c55e;"></i>
+                No se encontraron ausencias con los filtros actuales.
+            </div>
+
+            <div class="table-wrapper" v-else>
+                <table style="min-width:700px;">
+                    <thead>
+                        <tr>
+                            <th>Auditor</th>
+                            <th>Estado actual</th>
+                            <th>Motivo</th>
+                            <th>Hasta (reposo)</th>
+                            <th>Total inventarios (período)</th>
+                            <th>Participó</th>
+                            <th>Ausente</th>
+                            <th v-if="ausenciasExcluirVacaciones">Excl. Vacaciones</th>
+                            <th>% Participación</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="aud in ausenciasFiltradas" :key="aud.nombre">
+                            <td style="font-weight:600;">{{ obtenerNombreApellido(aud.nombre) }}</td>
+                            <td>
+                                <span v-if="esAusente(aud.nombre)" style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:8px;font-size:0.6rem;font-weight:700;">🚫 Ausente</span>
+                                <span v-else style="background:#bbf7d0;color:#166534;padding:2px 8px;border-radius:8px;font-size:0.6rem;font-weight:700;">✅ Activo</span>
+                            </td>
+                            <td style="font-size:0.65rem;color:#64748b;">{{ motivoAusencia(aud.nombre) || '-' }}</td>
+                            <td style="font-size:0.65rem;">{{ hastaAusencia(aud.nombre) ? formatearFechaViaje(hastaAusencia(aud.nombre)) : '-' }}</td>
+                            <td style="text-align:center;font-weight:700;">{{ aud.totalInventarios }}</td>
+                            <td style="text-align:center;color:#166534;font-weight:700;">{{ aud.participo }}</td>
+                            <td style="text-align:center;color:#991b1b;font-weight:700;">{{ aud.ausencias }}</td>
+                            <td v-if="ausenciasExcluirVacaciones" style="text-align:center;color:#92400e;font-weight:700;">{{ aud.vacaciones }}</td>
+                            <td>
+                                <div style="display:flex;align-items:center;gap:8px;">
+                                    <div style="flex:1;background:#e2e8f0;border-radius:20px;height:8px;overflow:hidden;">
+                                        <div :style="{ width: aud.porcentaje + '%', background: aud.porcentaje >= 70 ? '#22c55e' : aud.porcentaje >= 40 ? '#f59e0b' : '#ef4444', height: '100%', borderRadius: '20px', transition: 'width 0.3s' }"></div>
+                                    </div>
+                                    <span style="font-weight:700;font-size:0.75rem;" :style="{ color: aud.porcentaje >= 70 ? '#166534' : aud.porcentaje >= 40 ? '#92400e' : '#991b1b' }">{{ aud.porcentaje }}%</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p style="font-size:0.68rem;color:#94a3b8;margin-top:8px;"><i class="fas fa-info-circle"></i> El % de participación se calcula sobre los inventarios en que el auditor <strong>debería haber podido participar</strong>. Si "Excluir vacaciones" está activo, los períodos de vacación no se cuentan como ausencia para el cálculo.</p>
+        </div>
+    </div>
+    <!-- FIN MÓDULO HISTORIAL -->
+
     <!-- Modals de Notificaciones y Bitácora -->
     <div class="modal-overlay" v-if="mostrarNotificacionesModal" @click.self="mostrarNotificacionesModal = false">
         <div class="modal-content">
@@ -1677,6 +1893,14 @@
                 vistaDispositivo: 'movil',
                 logoBase64: null,
                 notificacionesPushActivas: false,
+                // ====== HISTORIAL DE CRONOGRAMAS ======
+                historialInventarios: [], // [ { id, fecha, modulo, puntos:[], totalAuditores } ]
+                historialSubTab: 'cronogramas',
+                historialBuscar: '', historialFiltroMes: '', historialFiltroCiudad: '', historialFiltroDepto: '',
+                historialDetalleId: null,
+                // ====== AUSENCIAS ======
+                ausenciasFiltroPersoa: '', ausenciasFiltroDesde: '', ausenciasFiltroHasta: '',
+                ausenciasExcluirVacaciones: false,
             },
             computed: {
                 // Base de auditores compartida entre Puntos de Ventas y Centro Logístico
@@ -1805,12 +2029,68 @@
                 clCantidadPDVsUnicos() { return new Set(this.clFilas.map(f => String(f.DEPOSITO || '').trim()).filter(v => v !== '')).size; },
                 clCantidadAuditorias() { return this.clFilas.length; },
                 bitacoraFiltrada() { const q = this.bitacoraBusqueda.trim().toLowerCase(); return this.bitacora.filter(b => { const coincideModulo = !this.bitacoraFiltroModulo || b.modulo === this.bitacoraFiltroModulo; const coincideTexto = !q || (b.accion && b.accion.toLowerCase().includes(q)) || (b.detalle && b.detalle.toLowerCase().includes(q)); return coincideModulo && coincideTexto; }); },
+                // ====== HISTORIAL COMPUTED ======
+                historialFiltrado() {
+                    let lista = [...this.historialInventarios].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+                    const q = this.historialBuscar.trim().toLowerCase();
+                    const mes = this.historialFiltroMes; // 'YYYY-MM'
+                    const ciudad = this.historialFiltroCiudad.trim().toLowerCase();
+                    const depto = this.historialFiltroDepto.trim().toLowerCase();
+                    return lista.filter(entrada => {
+                        if (mes && !entrada.fecha.startsWith(mes)) return false;
+                        if (ciudad && !entrada.puntos.some(p => (p.CIUDAD || '').toLowerCase().includes(ciudad))) return false;
+                        if (depto && !entrada.puntos.some(p => (p.DEPARTAMENTO || '').toLowerCase().includes(depto))) return false;
+                        if (q) {
+                            return entrada.puntos.some(p =>
+                                (p.NRO_SUCURSAL && String(p.NRO_SUCURSAL).toLowerCase().includes(q)) ||
+                                (p.ESTR_DESCRIPCION && p.ESTR_DESCRIPCION.toLowerCase().includes(q)) ||
+                                (p.CIUDAD && p.CIUDAD.toLowerCase().includes(q)) ||
+                                (p.DEPARTAMENTO && p.DEPARTAMENTO.toLowerCase().includes(q)) ||
+                                (p.personasSeleccionadas || []).some(a => a.toLowerCase().includes(q))
+                            );
+                        }
+                        return true;
+                    });
+                },
+                // ====== AUSENCIAS COMPUTED ======
+                ausenciasFiltradas() {
+                    const desde = this.ausenciasFiltroDesde ? new Date(this.ausenciasFiltroDesde) : null;
+                    const hasta = this.ausenciasFiltroHasta ? new Date(this.ausenciasFiltroHasta) : null;
+                    const q = this.ausenciasFiltroPersoa.trim().toLowerCase();
+                    // Calcula inventarios auditados (de historial) en el período
+                    const inventariosEnPeriodo = this.historialInventarios.filter(h => {
+                        if (!desde && !hasta) return true;
+                        const fh = new Date(h.fecha);
+                        if (desde && fh < desde) return false;
+                        if (hasta && fh > hasta) return false;
+                        return true;
+                    });
+                    const totalInventariosPeriodo = inventariosEnPeriodo.length;
+                    return this.auditores
+                        .filter(a => !q || obtenerNombreApellido(a).toLowerCase().includes(q))
+                        .map(a => {
+                            const ausInfo = this.auditoresAusentes[normalizarClave(a)] || null;
+                            let participo = 0, vacaciones = 0;
+                            let inventariosBase = totalInventariosPeriodo;
+                            inventariosEnPeriodo.forEach(h => {
+                                const estuvoPresente = h.puntos.some(p => (p.personasSeleccionadas || []).includes(a));
+                                if (estuvoPresente) participo++;
+                                if (this.ausenciasExcluirVacaciones && ausInfo && ausInfo.motivo && ausInfo.motivo.toLowerCase().includes('vacac')) vacaciones++;
+                            });
+                            if (this.ausenciasExcluirVacaciones) inventariosBase = Math.max(0, inventariosBase - vacaciones);
+                            const ausencias = inventariosBase - participo;
+                            const porcentaje = inventariosBase > 0 ? Math.round((participo / inventariosBase) * 100) : 0;
+                            return { nombre: a, totalInventarios: inventariosBase, participo, ausencias: Math.max(0, ausencias), vacaciones, porcentaje };
+                        })
+                        .sort((a, b) => b.porcentaje - a.porcentaje);
+                },
             },
             watch: {
                 pfFilas: { handler() { this.guardarTodo(); }, deep: true }, clFilas: { handler() { this.guardarTodo(); }, deep: true },
                 auditores: { handler() { this.guardarTodo(); }, deep: true }, auditoresAusentes: { handler() { this.guardarTodo(); }, deep: true },
                 pfBloqueado() { this.guardarTodo(); }, clBloqueado() { this.guardarTodo(); }, bitacora: { handler() { this.guardarTodo(); }, deep: true }, historialNotificaciones: { handler() { this.guardarTodo(); }, deep: true },
                 viajesGuardados: { handler() { this.guardarTodo(); }, deep: true },
+                historialInventarios: { handler() { this.guardarTodo(); }, deep: true },
                 filasCriticas: { handler(nuevas) { this.procesarAlertasCriticas(nuevas); }, deep: true },
             },
             created() {
@@ -1902,6 +2182,7 @@
                         if (Array.isArray(data.bitacora)) this.bitacora = data.bitacora; if (Array.isArray(data.historialNotificaciones)) this.historialNotificaciones = data.historialNotificaciones;
                         if (data.ultimoMensajePF) this.ultimoMensajePF = data.ultimoMensajePF; if (data.ultimoMensajeCL) this.ultimoMensajeCL = data.ultimoMensajeCL;
                         if (Array.isArray(data.viajesGuardados)) this.viajesGuardados = data.viajesGuardados.filter(v => v && v.id && Array.isArray(v.puntos)).map(v => ({ ...v, auditores: Array.isArray(v.auditores) ? v.auditores : [] }));
+                        if (Array.isArray(data.historialInventarios)) this.historialInventarios = data.historialInventarios;
                         
                         [...this.pfFilas, ...this.clFilas].forEach(f => {
                             if (!f._uid) f._uid = nextUid(); ajustarContadorUid(f._uid);
@@ -1926,7 +2207,7 @@
                     this.$nextTick(() => { setTimeout(() => { this._supresionGuardadoDrive = false; }, 200); });
                 },
                 construirPayload() {
-                    return { version: 1, guardadoEn: new Date().toISOString(), pfFilas: this.pfFilas, clFilas: this.clFilas, auditores: this.auditores, auditoresAusentes: this.auditoresAusentes, pfBloqueado: this.pfBloqueado, clBloqueado: this.clBloqueado, bitacora: this.bitacora, historialNotificaciones: this.historialNotificaciones, ultimoMensajePF: this.ultimoMensajePF, ultimoMensajeCL: this.ultimoMensajeCL, viajesGuardados: this.viajesGuardados };
+                    return { version: 1, guardadoEn: new Date().toISOString(), pfFilas: this.pfFilas, clFilas: this.clFilas, auditores: this.auditores, auditoresAusentes: this.auditoresAusentes, pfBloqueado: this.pfBloqueado, clBloqueado: this.clBloqueado, bitacora: this.bitacora, historialNotificaciones: this.historialNotificaciones, ultimoMensajePF: this.ultimoMensajePF, ultimoMensajeCL: this.ultimoMensajeCL, viajesGuardados: this.viajesGuardados, historialInventarios: this.historialInventarios };
                 },
                 guardarEnAlmacenamiento() {
                     this.guardando = true;
@@ -2245,6 +2526,26 @@
                     const filasBit = [headersBit, ...this.bitacora.map(b => [formatearFechaHora(b.fecha), b.modulo, b.accion, b.detalle, b.usuario || 'Sin conectar (local)'])];
                     const wsBit = XLSX.utils.aoa_to_sheet(filasBit);
                     XLSX.utils.book_append_sheet(wb, wsBit, 'Bitácora');
+                    // Hoja de Historial de inventarios auditados (cronogramas guardados)
+                    const headersHist = ['Fecha Cronograma', 'Módulo', 'NRO/PDV', 'Descripción', 'Ciudad', 'Departamento', 'Auditores', 'Supervisores', 'Cant. Aud.', 'Fecha Real Inventario', 'Días (congelado)'];
+                    const filasHist = [headersHist];
+                    this.historialInventarios.forEach(h => {
+                        (h.puntos || []).forEach(p => {
+                            filasHist.push([
+                                formatearFechaHora(h.fecha), h.modulo,
+                                p.NRO_SUCURSAL || p.DEPOSITO || 'S/N',
+                                p.ESTR_DESCRIPCION || p.SECTOR || '',
+                                p.CIUDAD || '', p.DEPARTAMENTO || '',
+                                (p.personasSeleccionadas || []).join(', '),
+                                (p.supervisoresSeleccionados || []).join(', '),
+                                (p.personasSeleccionadas || []).length,
+                                p.fechaRealInventario || '',
+                                p.diasCongelados !== undefined ? p.diasCongelados : ''
+                            ]);
+                        });
+                    });
+                    const wsHist = XLSX.utils.aoa_to_sheet(filasHist);
+                    XLSX.utils.book_append_sheet(wb, wsHist, 'Historial');
                     return wb;
                 },
                 async driveGuardarExcel() {
@@ -2409,6 +2710,16 @@
                     if (this.noDrive()) return;
                     const fila = this.pfFilasFiltradas[index]; if (!fila) return;
                     if (fila.estado === 'pendiente' || fila.estado === 'agendado') fila.motivoReauditoria = null;
+                    // ⭐ Congelar fecha y días al marcar como Auditado
+                    if (fila.estado === 'auditado' || fila.estado === 'reauditado') {
+                        if (!fila.fechaRealInventario) {
+                            fila.fechaRealInventario = this.hoyIso();
+                            fila.diasCongelados = fila.dias !== null ? fila.dias : 0;
+                            fila.colorClaseCongelada = fila.colorClase || '';
+                            // Guardar snapshot en historial
+                            this.agregarSnapshotHistorial([fila], 'PF');
+                        }
+                    }
                     this.registrarBitacora('PF', 'Cambio manual de estado', `PDV ${fila.NRO_SUCURSAL || 'S/N'} cambiado a: ${this.estadoTexto(fila.estado)}.`); this.notificar(`Estado actualizado.`, 'info');
                 },
                 pfImportarAuditores(event) {
@@ -2433,13 +2744,25 @@
                         try {
                             const workbook = XLSX.read(e.target.result, { type: 'array' }); const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
                             let importados = 0;
+                            // ⭐ VERSIONING: si ya hay datos, archivar snapshot del cronograma actual antes de cargar el nuevo
+                            if (this.pfFilas.length > 0) {
+                                const fechaVersionStr = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                                const auditadosActuales = this.pfFilas.filter(f => f.estado === 'auditado' || f.estado === 'reauditado');
+                                if (auditadosActuales.length > 0) {
+                                    this.agregarSnapshotHistorial(auditadosActuales, 'PF (archivo anterior ' + fechaVersionStr + ')');
+                                }
+                                if (!confirm(`Ya hay ${this.pfFilas.length} PDV(s) cargados.\n\n¿Reemplazar con el nuevo cronograma?\n\nLos datos auditados actuales se guardarán automáticamente en el Historial antes de ser reemplazados.`)) {
+                                    event.target.value = ''; return;
+                                }
+                                this.pfFilas = [];
+                            }
                             jsonData.forEach(row => {
                                 let fechaConvertida = row['Ultimo Inventario'] ? convertirFecha(row['Ultimo Inventario']) : '';
-                                const fila = { _uid: nextUid(), NRO_SUCURSAL: row['NRO_SUCURSAL'] || '', ESTR_COD: row['ESTR_COD'] || '', ESTR_DESCRIPCION: row['ESTR_DESCRIPCION'] || row['Columna1'] || '', UBIC_TIPO: row['UBIC_TIPO'] || '', UBIC_ABREVIATURA: row['UBIC_ABREVIATURA'] || '', AÑO_APER: row['AÑO_APER'] || '', Ultimo_Inventario: fechaConvertida, CLUS_DESCRIPCION: row['CLUS_DESCRIPCION'] || '', CANT_GONDOLAS: row['CANT_GONDOLAS'] || '', ESTR_GRUPOS: row['ESTR_GRUPOS'] || '', ENCAR_FCH_NACI: row['ENCAR_FCH_NACI'] || '', ANTIGUEDAD_ENCAR: row['ANTIGUEDAD_ENCAR'] || '', ESTR_DESCRI: row['ESTR_DESCRI'] || '', NOMBRE_ENCARGADO: row['NOMBRE_ENCARGADO'] || '', NOMBRE_SUPERVISOR: row['NOMBRE_SUPERVISOR'] || '', NOMBRE_ADMINITRATIVO: row['NOMBRE_ADMINITRATIVO'] || '', DEPARTAMENTO: String(row['DEPARTAMENTO'] || row['Departamento'] || '').trim(), CIUDAD: String(row['CIUDAD'] || row['Ciudad'] || '').trim(), LATITUD: parsearCoordenada(row['LATITUD'] !== undefined ? row['LATITUD'] : row['Latitud']), LONGITUD: parsearCoordenada(row['LONGITUD'] !== undefined ? row['LONGITUD'] : row['Longitud']), TIPO: String(row['TIPO'] || row['Tipo'] || '').trim(), personasSeleccionadas: [], auditoresWifi: [], personaTemp: '', supervisorTemp: '', horaConvocatoria: row['HORA_CONVOCATORIA'] || '07:30', horaSalida: row['HORA_SALIDA'] || '17:30', seleccionado: true, estado: 'pendiente', motivoReauditoria: null, supervisoresSeleccionados: [], esReauditoria: false, tieneReauditoria: false, origenUid: null, reauditoriaUid: null };
+                                const fila = { _uid: nextUid(), NRO_SUCURSAL: row['NRO_SUCURSAL'] || '', ESTR_COD: row['ESTR_COD'] || '', ESTR_DESCRIPCION: row['ESTR_DESCRIPCION'] || row['Columna1'] || '', UBIC_TIPO: row['UBIC_TIPO'] || '', UBIC_ABREVIATURA: row['UBIC_ABREVIATURA'] || '', AÑO_APER: row['AÑO_APER'] || '', Ultimo_Inventario: fechaConvertida, CLUS_DESCRIPCION: row['CLUS_DESCRIPCION'] || '', CANT_GONDOLAS: row['CANT_GONDOLAS'] || '', ESTR_GRUPOS: row['ESTR_GRUPOS'] || '', ENCAR_FCH_NACI: row['ENCAR_FCH_NACI'] || '', ANTIGUEDAD_ENCAR: row['ANTIGUEDAD_ENCAR'] || '', ESTR_DESCRI: row['ESTR_DESCRI'] || '', NOMBRE_ENCARGADO: row['NOMBRE_ENCARGADO'] || '', NOMBRE_SUPERVISOR: row['NOMBRE_SUPERVISOR'] || '', NOMBRE_ADMINITRATIVO: row['NOMBRE_ADMINITRATIVO'] || '', DEPARTAMENTO: String(row['DEPARTAMENTO'] || row['Departamento'] || '').trim(), CIUDAD: String(row['CIUDAD'] || row['Ciudad'] || '').trim(), LATITUD: parsearCoordenada(row['LATITUD'] !== undefined ? row['LATITUD'] : row['Latitud']), LONGITUD: parsearCoordenada(row['LONGITUD'] !== undefined ? row['LONGITUD'] : row['Longitud']), TIPO: String(row['TIPO'] || row['Tipo'] || '').trim(), personasSeleccionadas: [], auditoresWifi: [], personaTemp: '', supervisorTemp: '', horaConvocatoria: row['HORA_CONVOCATORIA'] || '07:30', horaSalida: row['HORA_SALIDA'] || '17:30', seleccionado: true, estado: 'pendiente', motivoReauditoria: null, supervisoresSeleccionados: [], esReauditoria: false, tieneReauditoria: false, origenUid: null, reauditoriaUid: null, fechaRealInventario: '', diasCongelados: undefined, colorClaseCongelada: '' };
                                 fila.dias = calcularDiasDesde(fila.Ultimo_Inventario); fila.colorClase = getColorClase(fila.dias);
                                 this.marcarUidLocal(fila._uid); this.pfFilas.push(fila); importados++;
                             });
-                            this.pfBloqueado = true; this.notificar(`${importados} registros importados.`, 'success');
+                            this.pfBloqueado = true; this.notificar(`✅ ${importados} registros importados. El cronograma anterior quedó guardado en el Historial.`, 'success');
                         } catch (error) { this.notificar('Error al leer el archivo.', 'error'); }
                     };
                     reader.readAsArrayBuffer(file); event.target.value = '';
@@ -2516,6 +2839,15 @@
                     if (this.noDrive()) return;
                     const fila = this.clFilasFiltradas[index]; if (!fila) return;
                     if (fila.estado === 'pendiente' || fila.estado === 'agendado') fila.motivoReauditoria = null;
+                    // ⭐ Congelar fecha y días al marcar como Auditado
+                    if (fila.estado === 'auditado' || fila.estado === 'reauditado') {
+                        if (!fila.fechaRealInventario) {
+                            fila.fechaRealInventario = this.hoyIso();
+                            fila.diasCongelados = fila.dias !== null ? fila.dias : 0;
+                            fila.colorClaseCongelada = fila.colorClase || '';
+                            this.agregarSnapshotHistorial([fila], 'CL');
+                        }
+                    }
                 },
                 clImportarAuditores(event) {
                     const file = event.target.files[0]; if (!file) return; const reader = new FileReader();
@@ -2536,14 +2868,27 @@
                     reader.onload = (e) => {
                         try {
                             const workbook = XLSX.read(e.target.result, { type: 'array' }); const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                            // ⭐ VERSIONING: archivar cronograma actual antes de reemplazar
+                            if (this.clFilas.length > 0) {
+                                const fechaVersionStr = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                                const auditadosActuales = this.clFilas.filter(f => f.estado === 'auditado' || f.estado === 'reauditado');
+                                if (auditadosActuales.length > 0) {
+                                    this.agregarSnapshotHistorial(auditadosActuales, 'CL (archivo anterior ' + fechaVersionStr + ')');
+                                }
+                                if (!confirm(`Ya hay ${this.clFilas.length} registro(s) de Centro Logístico cargados.\n\n¿Reemplazar con el nuevo cronograma?\n\nLos datos auditados actuales se guardarán en el Historial antes de ser reemplazados.`)) {
+                                    event.target.value = ''; return;
+                                }
+                                this.clFilas = [];
+                            }
                             jsonData.forEach(row => {
                                 let fechaConvertida = row['Ultimo Inventario'] ? convertirFecha(row['Ultimo Inventario']) : '';
-                                const fila = { _uid: nextUid(), DEPOSITO: row['DEPOSITO'] || '', SECTOR: row['SECTOR'] || '', Ultimo_Inventario: fechaConvertida, personasSeleccionadas: [], auditoresWifi: [], personaTemp: '', supervisorTemp: '', horaConvocatoria: row['HORA_CONVOCATORIA'] || '07:30', horaSalida: row['HORA_SALIDA'] || '17:30', seleccionado: true, estado: 'pendiente', motivoReauditoria: null, supervisoresSeleccionados: [], esReauditoria: false, tieneReauditoria: false, origenUid: null, reauditoriaUid: null };
+                                const fila = { _uid: nextUid(), DEPOSITO: row['DEPOSITO'] || '', SECTOR: row['SECTOR'] || '', Ultimo_Inventario: fechaConvertida, personasSeleccionadas: [], auditoresWifi: [], personaTemp: '', supervisorTemp: '', horaConvocatoria: row['HORA_CONVOCATORIA'] || '07:30', horaSalida: row['HORA_SALIDA'] || '17:30', seleccionado: true, estado: 'pendiente', motivoReauditoria: null, supervisoresSeleccionados: [], esReauditoria: false, tieneReauditoria: false, origenUid: null, reauditoriaUid: null, fechaRealInventario: '', diasCongelados: undefined, colorClaseCongelada: '' };
                                 fila.dias = calcularDiasDesde(fila.Ultimo_Inventario); fila.colorClase = getColorClase(fila.dias);
                                 this.marcarUidLocal(fila._uid); this.clFilas.push(fila);
                             });
                             this.clBloqueado = true;
-                        } catch (error) {}
+                            this.notificar(`✅ Centro Logístico importado. El cronograma anterior quedó guardado en el Historial.`, 'success');
+                        } catch (error) { this.notificar('Error al leer el archivo.', 'error'); }
                     };
                     reader.readAsArrayBuffer(file); event.target.value = '';
                 },
@@ -2670,13 +3015,93 @@
                 generadoMarcarAuditado() {
                     if (this.noDrive()) return;
                     const data = [...this.pfFilas, ...this.clFilas];
-                    this.generadoPuntos.forEach(f => { const fila = data.find(ff => ff._uid === f._uid); if (fila && fila.estado !== 'auditado') fila.estado = 'auditado'; });
+                    const auditadosAhora = [];
+                    this.generadoPuntos.forEach(f => {
+                        const fila = data.find(ff => ff._uid === f._uid);
+                        if (fila && fila.estado !== 'auditado') {
+                            fila.estado = 'auditado';
+                            // ⭐ Congelar fecha y días
+                            if (!fila.fechaRealInventario) {
+                                fila.fechaRealInventario = this.hoyIso();
+                                fila.diasCongelados = fila.dias !== null ? fila.dias : 0;
+                                fila.colorClaseCongelada = fila.colorClase || '';
+                            }
+                            auditadosAhora.push(fila);
+                        }
+                    });
+                    // Guardar snapshot en historial
+                    if (auditadosAhora.length > 0) {
+                        const esPF = this.generadoModulo.includes('Ventas') || this.generadoModulo.includes('PDV');
+                        const esCL = this.generadoModulo.includes('Logístico');
+                        const modulo = esPF && esCL ? 'PF + CL' : (esPF ? 'PF' : 'CL');
+                        this.agregarSnapshotHistorial(auditadosAhora, modulo);
+                    }
                     this.generadoMostrar = false;
                 },
                 cantAuditoresNetos(fila) {
                     const personas = fila.personasSeleccionadas || [];
                     const supervisores = (fila.supervisoresSeleccionados && fila.supervisoresSeleccionados.length > 0) ? fila.supervisoresSeleccionados : (personas.length > 0 ? [personas[0]] : []);
                     return personas.filter(p => !supervisores.includes(p)).length;
+                },
+                // ======== HISTORIAL DE INVENTARIOS ========
+                agregarSnapshotHistorial(filas, modulo) {
+                    if (!filas || filas.length === 0) return;
+                    // Calcular auditores únicos del grupo
+                    const auditoresSet = new Set();
+                    filas.forEach(f => { (f.personasSeleccionadas || []).forEach(a => auditoresSet.add(a)); });
+                    // Buscar si ya existe una entrada del día de hoy para el mismo módulo y fusionarla
+                    const hoy = this.hoyIso();
+                    const existente = this.historialInventarios.find(h => h.fecha && h.fecha.startsWith(hoy) && h.modulo === modulo);
+                    if (existente) {
+                        const uidsExistentes = new Set(existente.puntos.map(p => p._uid));
+                        filas.forEach(f => { if (!uidsExistentes.has(f._uid)) existente.puntos.push({ ...f }); });
+                        const todosAuditores = new Set();
+                        existente.puntos.forEach(p => (p.personasSeleccionadas || []).forEach(a => todosAuditores.add(a)));
+                        existente.totalAuditores = todosAuditores.size;
+                    } else {
+                        this.historialInventarios.push({
+                            id: 'hist_' + Date.now() + '_' + Math.floor(Math.random() * 9999),
+                            fecha: new Date().toISOString(),
+                            modulo: modulo,
+                            puntos: filas.map(f => ({ ...f })),
+                            totalAuditores: auditoresSet.size,
+                            _filtroCiudad: '', _filtroDepto: '', _filtroAuditor: ''
+                        });
+                    }
+                    this.notificar(`📂 Cronograma guardado en Historial (${filas.length} PDV${filas.length !== 1 ? 's' : ''}).`, 'success');
+                },
+                historialToggleDetalle(id) {
+                    if (this.historialDetalleId === id) { this.historialDetalleId = null; }
+                    else {
+                        const entrada = this.historialInventarios.find(h => h.id === id);
+                        if (entrada && entrada._filtroCiudad === undefined) { this.$set(entrada, '_filtroCiudad', ''); this.$set(entrada, '_filtroDepto', ''); this.$set(entrada, '_filtroAuditor', ''); }
+                        this.historialDetalleId = id;
+                    }
+                },
+                historialResumenAuditores(entrada) {
+                    const conteo = {};
+                    (entrada.puntos || []).forEach(p => {
+                        (p.personasSeleccionadas || []).forEach(a => {
+                            const k = obtenerNombreApellido(a);
+                            conteo[k] = { nombre: a, count: (conteo[k] ? conteo[k].count : 0) + 1 };
+                        });
+                    });
+                    return Object.values(conteo).sort((a, b) => b.count - a.count);
+                },
+                historialPuntosFiltrados(entrada) {
+                    let puntos = entrada.puntos || [];
+                    const ciudad = (entrada._filtroCiudad || '').trim().toLowerCase();
+                    const depto = (entrada._filtroDepto || '').trim().toLowerCase();
+                    const auditor = (entrada._filtroAuditor || '').trim().toLowerCase();
+                    if (ciudad) puntos = puntos.filter(p => (p.CIUDAD || '').toLowerCase().includes(ciudad));
+                    if (depto) puntos = puntos.filter(p => (p.DEPARTAMENTO || '').toLowerCase().includes(depto));
+                    if (auditor) puntos = puntos.filter(p => (p.personasSeleccionadas || []).some(a => a.toLowerCase().includes(auditor)));
+                    return puntos;
+                },
+                limpiarHistorial() {
+                    if (!confirm('¿Limpiar todo el historial de cronogramas? Esta acción no se puede deshacer.')) return;
+                    this.historialInventarios = [];
+                    this.notificar('Historial limpiado.', 'info');
                 },
                 mostrarRuta(puntos, titulo) { this.rutaTitulo = titulo; this.rutaPuntos = [...puntos].sort((a, b) => parseInt(String(a.NRO_SUCURSAL || a.DEPOSITO).replace(/\D/g, '')) - parseInt(String(b.NRO_SUCURSAL || b.DEPOSITO).replace(/\D/g, ''))); this.rutaTab = 'agendados'; this.rutaMostrar = true; },
                 // ===== Métodos Armar Ruta Viaje =====
