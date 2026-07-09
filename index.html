@@ -560,10 +560,9 @@
     </transition-group>
 
     <h1>
-        <div class="logo-upload" @click="$refs.logoInput.click()" title="Click para subir el logo de tu empresa">
+        <div class="logo-upload" @click="$refs.logoInput.click()" title="Click para cambiar el logo">
             <img v-if="logoBase64" :src="logoBase64" alt="Logo">
             <i v-else class="fas fa-image"></i>
-            <button v-if="logoBase64" class="logo-quitar" @click.stop="quitarLogo" title="Quitar logo"><i class="fas fa-times"></i></button>
         </div>
         <input type="file" ref="logoInput" accept="image/*" style="display:none" @change="subirLogo">
         <i class="fas fa-clipboard-list"></i>
@@ -581,6 +580,9 @@
             <i :class="guardando ? 'fas fa-sync-alt fa-spin' : 'fas fa-check-circle'"></i>
             {{ guardando ? 'Guardando...' : 'Guardado' }}
         </span>
+        <button class="header-icon-btn" @click="mostrarConfigModal = true" title="Configuración de apariencia">
+            <i class="fas fa-cog"></i>
+        </button>
         <button class="header-icon-btn" @click="mostrarNotificacionesModal = true" title="Notificaciones">
             <i class="fas fa-bell"></i>
             <span class="badge-count" v-if="historialNotificaciones.length">{{ historialNotificaciones.length > 99 ? '99+' : historialNotificaciones.length }}</span>
@@ -632,6 +634,9 @@
         <button class="tab-btn" :class="{ active: tabActivo === 'historial' }" @click="tabActivo = 'historial'">
             <i class="fas fa-history"></i> Historial
             <span v-if="historialInventarios.length" style="background:#2563eb;color:white;border-radius:12px;padding:1px 7px;font-size:0.65rem;margin-left:4px;">{{ historialInventarios.length }}</span>
+        </button>
+        <button class="tab-btn" :class="{ active: tabActivo === 'ca' }" @click="tabActivo = 'ca'">
+            <i class="fas fa-file-alt"></i> Control Administrativo
         </button>
     </div>
 
@@ -1504,6 +1509,221 @@
         </div>
     </div>
 
+    <!-- ============ MÓDULO CA: CONTROL ADMINISTRATIVO ============ -->
+    <div class="tab-content" :class="{ active: tabActivo === 'ca', 'bloqueo-sin-drive': !driveConectado }">
+        <div class="toolbar">
+            <span class="badge badge-primary"><i class="far fa-clock"></i> Límite: 180 días</span>
+            <div class="search-container">
+                <i class="fas fa-search"></i>
+                <input type="text" v-model="caBuscar" placeholder="Buscar PDV...">
+            </div>
+            <div class="search-container">
+                <i class="fas fa-tags"></i>
+                <input type="text" v-model="caGrupo" placeholder="Buscar Grupo...">
+            </div>
+            <div class="search-container" style="min-width:130px;">
+                <i class="fas fa-filter"></i>
+                <select v-model="caFiltroDias" style="border:none;outline:none;padding:4px 4px;font-size:0.75rem;background:transparent;cursor:pointer;">
+                    <option value="">Todos los días</option>
+                    <option value="verde">&lt; 150 días</option>
+                    <option value="amarillo">150 - 170 días</option>
+                    <option value="naranja">170 - 175 días</option>
+                    <option value="rojo">175 - 180 días</option>
+                    <option value="rojo-fuerte">&gt; 180 días</option>
+                </select>
+            </div>
+            <div class="search-container" style="min-width:140px;">
+                <i class="fas fa-tasks"></i>
+                <select v-model="caFiltroEstado" style="border:none;outline:none;padding:4px 4px;font-size:0.75rem;background:transparent;cursor:pointer;">
+                    <option value="">Todos los estados</option>
+                    <option value="pendiente">⏳ Pendiente</option>
+                    <option value="agendado">📅 Agendado</option>
+                    <option value="generado">📋 Generado</option>
+                    <option value="auditado">✅ Auditado</option>
+                    <option value="reauditado">🔄 Reauditado</option>
+                </select>
+            </div>
+            <div class="progreso-container">
+                <div class="progreso-item">
+                    <i class="fas fa-chart-line" style="color:#0891b2;"></i>
+                    <span>Gral:</span>
+                    <div class="barra"><div class="fill" :style="{ width: caProgreso + '%', background: 'linear-gradient(90deg, #0891b2, #06b6d4)' }"></div></div>
+                    <span class="porcentaje">{{ caProgreso }}%</span>
+                </div>
+                <div class="progreso-item">
+                    <i class="fas fa-calendar-check" style="color:#0284c7;"></i>
+                    <span>Mes:</span>
+                    <div class="barra"><div class="fill" :style="{ width: caProgresoMes + '%', background: 'linear-gradient(90deg, #0284c7, #38bdf8)' }"></div></div>
+                    <span class="porcentaje">{{ caProgresoMes }}%</span>
+                </div>
+            </div>
+            <span style="flex:1"></span>
+            <button class="btn btn-primary" @click="caAgregarFila" :disabled="caBloqueado"><i class="fas fa-plus"></i> Agregar</button>
+            <button class="btn btn-success" @click="caExportarCSV"><i class="fas fa-file-export"></i> CSV</button>
+            <button class="btn btn-info" @click="caMostrarResumen = true"><i class="fas fa-chart-pie"></i> Resumen</button>
+            <button class="btn btn-info" @click="mostrarListadoAuditores('ca')"><i class="fas fa-users"></i> Ver Auditores</button>
+            <button class="btn btn-agendar" @click="caToggleAgendar"><i class="fas fa-calendar-plus"></i> Agendar</button>
+            <button class="btn btn-generar" @click="caGenerar"><i class="fas fa-sync-alt"></i> Generar</button>
+            <button class="btn btn-success" style="background-color: #25D366; border-color: #25D366;" @click="restaurarMensaje(ultimoMensajeCA)" v-if="ultimoMensajeCA"><i class="fab fa-whatsapp"></i> Último Mensaje</button>
+            <button class="btn btn-reauditar" @click="caAbrirReauditar"><i class="fas fa-undo"></i> Reauditar</button>
+            <button class="btn btn-danger" @click="abrirEliminarTodo('ca')"><i class="fas fa-trash-alt"></i> Eliminar Todo</button>
+        </div>
+
+        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; align-items:center; background:#f0f9ff; padding:8px 18px; border-radius:12px; border:1px solid #bae6fd;">
+            <span style="font-weight:600; font-size:0.75rem; color:#0369a1;"><i class="fas fa-users" style="color:#0891b2;"></i> Auditores</span>
+            <div class="file-input-wrapper">
+                <button class="btn btn-file btn-sm"><i class="fas fa-file-import"></i> Importar Auditores</button>
+                <input type="file" accept=".xlsx,.xls" @change="pfImportarAuditores($event)">
+            </div>
+            <div class="file-input-wrapper">
+                <button class="btn btn-success btn-sm"><i class="fas fa-database"></i> Importar BD</button>
+                <input type="file" accept=".xlsx,.xls" @change="caImportarBD($event)">
+            </div>
+            <div class="input-group" style="flex:1; min-width:180px;">
+                <input type="text" v-model="caNuevoAuditorNombre" placeholder="Nombre y Apellido" style="flex:1;" @keyup.enter="caAgregarAuditor">
+                <button class="btn btn-primary btn-sm" @click="caAgregarAuditor"><i class="fas fa-plus"></i></button>
+            </div>
+            <span class="badge badge-primary">Total: {{ caAuditores.length }}</span>
+            <button class="btn btn-info btn-sm" @click="mostrarListadoAuditores('ca')"><i class="fas fa-eye"></i> Ver</button>
+        </div>
+
+        <div class="table-wrapper" v-if="caFilasFiltradas.length > 0">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:30px;">
+                            <div class="seleccion-todos"><input type="checkbox" v-model="caSeleccionarTodos" @change="caToggleTodos"></div>
+                        </th>
+                        <th>NRO_SUCURSAL</th>
+                        <th>ESTR_COD</th>
+                        <th>ESTR_DESCRIPCION</th>
+                        <th>UBIC_TIPO</th>
+                        <th>UBIC_ABREVIATURA</th>
+                        <th>AÑO_APER</th>
+                        <th class="col-fecha">Ultimo Inventario</th>
+                        <th>Días</th>
+                        <th style="min-width:90px;">Hora Convocatoria</th>
+                        <th style="min-width:90px;">Hora Salida</th>
+                        <th>CLUS_DESCRIPCION</th>
+                        <th>CANT_GONDOLAS</th>
+                        <th>ESTR_GRUPOS</th>
+                        <th style="min-width:150px;">Auditores</th>
+                        <th style="min-width:130px;">Supervisor(es)</th>
+                        <th style="min-width:55px;" title="Cantidad de auditores que fueron al PDV, sin contar al supervisor">Cant. Aud.</th>
+                        <th style="min-width:80px;">Estado</th>
+                        <th style="min-width:70px;">Motivo</th>
+                        <th style="min-width:110px;" title="Fecha en que se realizó el inventario (se congela al marcar Auditado)">📅 Fecha Inventario</th>
+                        <th style="min-width:80px;" title="Días transcurridos desde el último inventario (se congela al marcar Auditado)">🔒 Días (congelado)</th>
+                        <th class="col-acciones">✕</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(fila, index) in caFilasFiltradas" :key="fila._uid">
+                        <td><input type="checkbox" class="checkbox-punto" v-model="fila.seleccionado"></td>
+                        <td><input class="input-sm" :class="{ 'no-edit': caBloqueado }" v-model="fila.NRO_SUCURSAL" :disabled="caBloqueado" style="min-width:40px;"></td>
+                        <td><input class="input-sm" :class="{ 'no-edit': caBloqueado }" v-model="fila.ESTR_COD" :disabled="caBloqueado" style="min-width:40px;"></td>
+                        <td><input class="input-sm" :class="{ 'no-edit': caBloqueado }" v-model="fila.ESTR_DESCRIPCION" :disabled="caBloqueado"></td>
+                        <td><input class="input-sm" :class="{ 'no-edit': caBloqueado }" v-model="fila.UBIC_TIPO" :disabled="caBloqueado" style="min-width:50px;"></td>
+                        <td><input class="input-sm" :class="{ 'no-edit': caBloqueado }" v-model="fila.UBIC_ABREVIATURA" :disabled="caBloqueado" style="min-width:40px;"></td>
+                        <td><input class="input-sm" :class="{ 'no-edit': caBloqueado }" v-model="fila.AÑO_APER" :disabled="caBloqueado" style="min-width:40px;"></td>
+                        <td><input class="input-date" type="date" v-model="fila.Ultimo_Inventario" @change="caCalcularDias(index)" style="min-width:120px;"></td>
+                        <td><span class="dias-cell" :class="fila.colorClase">{{ fila.dias !== null ? fila.dias : '-' }}</span></td>
+                        <td><input class="input-sm" type="time" v-model="fila.horaConvocatoria" style="min-width:80px;"></td>
+                        <td><input class="input-sm" type="time" v-model="fila.horaSalida" style="min-width:80px;"></td>
+                        <td><input class="input-sm" :class="{ 'no-edit': caBloqueado }" v-model="fila.CLUS_DESCRIPCION" :disabled="caBloqueado"></td>
+                        <td><input class="input-sm" :class="{ 'no-edit': caBloqueado }" v-model="fila.CANT_GONDOLAS" :disabled="caBloqueado" style="min-width:30px;"></td>
+                        <td><input class="input-sm" :class="{ 'no-edit': caBloqueado }" v-model="fila.ESTR_GRUPOS" :disabled="caBloqueado" style="min-width:40px;"></td>
+                        <td>
+                            <div class="personas-container">
+                                <span class="tag-persona" v-for="p in fila.personasSeleccionadas" :key="p">
+                                    {{ obtenerNombreApellido(p) }}
+                                    <label style="margin-left:6px; display:inline-flex; align-items:center; cursor:pointer;" title="Marcar para asignar herramienta WiFi">
+                                        <input type="checkbox" :checked="fila.auditoresWifi && fila.auditoresWifi.includes(p)" @change="toggleWifi(fila, p)" style="margin-right:3px; cursor:pointer; accent-color:#10b981; width:12px; height:12px;">
+                                        <i class="fas fa-wifi" :style="{ color: (fila.auditoresWifi && fila.auditoresWifi.includes(p)) ? '#10b981' : '#94a3b8' }"></i>
+                                    </label>
+                                </span>
+                                <selector-auditor :opciones="caAuditoresDisponibles(fila)" @seleccionar="caAgregarPersona(index, $event)"></selector-auditor>
+                                <button class="btn btn-outline btn-sm" style="padding:0 6px; font-size:0.55rem;" @click="caQuitarPersona(index)" :disabled="fila.personasSeleccionadas.length === 0" title="Quitar último auditor"><i class="fas fa-times"></i></button>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="personas-container">
+                                <span class="tag-supervisor" v-for="s in fila.supervisoresSeleccionados" :key="s">
+                                    ⭐ {{ obtenerNombreApellido(s) }}
+                                    <label style="margin-left:6px; margin-right:4px; display:inline-flex; align-items:center; cursor:pointer;" title="Marcar para asignar herramienta WiFi">
+                                        <input type="checkbox" :checked="fila.auditoresWifi && fila.auditoresWifi.includes(s)" @change="toggleWifi(fila, s)" style="margin-right:3px; cursor:pointer; accent-color:#10b981; width:12px; height:12px;">
+                                        <i class="fas fa-wifi" :style="{ color: (fila.auditoresWifi && fila.auditoresWifi.includes(s)) ? '#10b981' : '#94a3b8' }"></i>
+                                    </label>
+                                    <button class="tag-quitar" @click="caQuitarSupervisor(index, s)" title="Quitar supervisor">×</button>
+                                </span>
+                                <select class="select-sm" v-model="fila.supervisorTemp" @change="caAgregarSupervisor(index)" v-if="caSupervisoresDisponibles(fila).length > 0">
+                                    <option value="">+ Agregar</option>
+                                    <option v-for="p in caSupervisoresDisponibles(fila)" :key="p" :value="p">{{ obtenerNombreApellido(p) }}</option>
+                                </select>
+                            </div>
+                        </td>
+                        <td style="text-align:center;">
+                            <span class="stats-badge" :style="cantAuditoresNetos(fila) > 0 ? 'background:#dbeafe; color:#1e40af;' : ''" title="Auditores asignados sin contar al supervisor">👥 {{ cantAuditoresNetos(fila) }}</span>
+                        </td>
+                        <td>
+                            <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
+                                <select class="select-estado" :class="'tag-' + fila.estado" v-model="fila.estado" @change="caCambiarEstado(index)" title="Cambiar estado manualmente">
+                                    <option value="pendiente">⏳ Pendiente</option>
+                                    <option value="agendado">📅 Agendado</option>
+                                    <option value="generado">📋 Generado</option>
+                                    <option value="auditado">✅ Auditado</option>
+                                    <option value="reauditado">🔄 Reauditado</option>
+                                </select>
+                                <i v-if="fila.esReauditoria" class="fas fa-redo-alt" style="color:#dc2626; font-size:0.7rem;" title="Este registro es una reauditoría"></i>
+                                <i v-if="fila.tieneReauditoria" class="fas fa-link" style="color:#7c3aed; font-size:0.7rem;" title="Este registro generó una reauditoría posterior"></i>
+                            </div>
+                        </td>
+                        <td style="font-size:0.56rem; color:#64748b; max-width:100px; word-break:break-word;">{{ fila.motivoReauditoria || '-' }}</td>
+                        <td style="font-size:0.62rem; color:#0f2b4b; font-weight:600; white-space:nowrap;">
+                            <span v-if="fila.fechaRealInventario" style="display:flex;align-items:center;gap:4px;">
+                                <i class="fas fa-lock" style="color:#7c3aed;font-size:0.55rem;"></i>{{ fila.fechaRealInventario }}
+                            </span>
+                            <span v-else style="color:#94a3b8;">—</span>
+                        </td>
+                        <td style="font-size:0.62rem; font-weight:700; white-space:nowrap; text-align:center;">
+                            <span v-if="fila.diasCongelados !== undefined" :class="fila.colorClaseCongelada" style="display:flex;align-items:center;gap:4px;justify-content:center;">
+                                <i class="fas fa-lock" style="color:#7c3aed;font-size:0.55rem;"></i>{{ fila.diasCongelados }}
+                            </span>
+                            <span v-else style="color:#94a3b8;">—</span>
+                        </td>
+                        <td><button class="btn-eliminar-fila" @click="caEliminarFila(index)"><i class="fas fa-trash-alt"></i></button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div v-else style="text-align:center; padding:40px; color:#94a3b8;">
+            <i class="fas fa-inbox" style="font-size:2.2rem; display:block; margin-bottom:10px;"></i>
+            No hay registros de Control Administrativo que coincidan con los filtros actuales.
+        </div>
+
+        <div class="footer-actions">
+            <div class="grupo-info">
+                <i class="fas fa-file-alt" style="color:#0891b2;"></i> <strong>CA:</strong> <span>{{ caFilas.length }}</span>
+                <span class="stats-badge badge-primary">✓ Sel: {{ caSeleccionados }}</span>
+                <div class="estado-stats">
+                    <span class="stat-item"><span class="num" style="color:#92400e;">{{ caPendientes }}</span> ⏳</span>
+                    <span class="stat-item"><span class="num" style="color:#1e40af;">{{ caAgendados }}</span> 📅</span>
+                    <span class="stat-item"><span class="num" style="color:#5b21b6;">{{ caGenerados }}</span> 📋</span>
+                    <span class="stat-item"><span class="num" style="color:#166534;">{{ caAuditados }}</span> ✅</span>
+                    <span class="stat-item"><span class="num" style="color:#991b1b;">{{ caReauditados }}</span> 🔄</span>
+                </div>
+            </div>
+            <div class="flex-row">
+                <span class="badge badge-verde"><i class="fas fa-square"></i> &lt;150</span>
+                <span class="badge badge-amarillo"><i class="fas fa-square"></i> 150-170</span>
+                <span class="badge badge-naranja"><i class="fas fa-square"></i> 170-175</span>
+                <span class="badge badge-rojo"><i class="fas fa-square"></i> 175-180</span>
+                <span class="badge badge-rojo-fuerte"><i class="fas fa-square"></i> &gt;180</span>
+            </div>
+        </div>
+    </div>
+    <!-- FIN MÓDULO CA -->
+
     <!-- ============ MÓDULO HISTORIAL ============ -->
     <div class="tab-content" :class="{ active: tabActivo === 'historial' }">
         <div class="tabs" style="margin-bottom:18px;">
@@ -1687,6 +1907,32 @@
         </div>
     </div>
     <!-- FIN MÓDULO HISTORIAL -->
+
+    <!-- ===== MODAL: Configuración de apariencia ===== -->
+    <div class="modal-overlay" v-if="mostrarConfigModal" @click.self="mostrarConfigModal = false">
+        <div class="modal-content" style="max-width:400px;">
+            <button class="close-modal" @click="mostrarConfigModal = false">&times;</button>
+            <h2 style="font-size:1.1rem;margin-bottom:16px;"><i class="fas fa-cog" style="color:#6366f1;"></i> Configuración de apariencia</h2>
+            <!-- Logo -->
+            <div style="margin-bottom:18px;">
+                <label style="font-weight:700;font-size:0.82rem;display:block;margin-bottom:8px;color:#1e293b;"><i class="fas fa-image"></i> Logo de la empresa</label>
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div style="width:64px;height:64px;border-radius:14px;overflow:hidden;border:2px solid #e2e8f0;background:#f8faff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <img v-if="logoBase64" :src="logoBase64" alt="Logo" style="width:100%;height:100%;object-fit:cover;">
+                        <i v-else class="fas fa-image" style="color:#94a3b8;font-size:1.5rem;"></i>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        <button class="btn btn-primary btn-sm" @click="$refs.logoInputModal.click()"><i class="fas fa-upload"></i> Cambiar logo</button>
+                        <button class="btn btn-danger btn-sm" v-if="logoBase64" @click="quitarLogo"><i class="fas fa-trash"></i> Quitar logo</button>
+                        <input type="file" ref="logoInputModal" accept="image/*" style="display:none" @change="subirLogo">
+                    </div>
+                </div>
+                <p style="font-size:0.65rem;color:#94a3b8;margin-top:6px;"><i class="fas fa-info-circle"></i> El logo se guarda en este navegador y se muestra en el encabezado.</p>
+            </div>
+            <button class="btn btn-outline" @click="mostrarConfigModal = false" style="width:100%;margin-top:4px;">Cerrar</button>
+        </div>
+    </div>
+    <!-- FIN MODAL Config -->
 
     <!-- Modal de Notificaciones y Bitácora -->
     <!-- ===== MODAL: Fecha real del inventario ===== -->
@@ -1964,6 +2210,13 @@
                 // { 'Nombre Auditor': 'Equipo A' }
                 auditoresEquipos: {},
                 auditoresModalFiltroEquipo: '',
+                // ====== CONFIGURACIÓN / APARIENCIA ======
+                mostrarConfigModal: false,
+                // ====== CONTROL ADMINISTRATIVO ======
+                caFilas: [],
+                caBuscar: '', caGrupo: '', caFiltroDias: '', caFiltroEstado: '', caSeleccionarTodos: true,
+                caNuevoAuditorNombre: '', caMostrarResumen: false, caBloqueado: false,
+                ultimoMensajeCA: null,
                 // Estado de Google Drive
                 driveConectado: false, driveConectando: false, driveUsuario: '', driveSincronizando: false,
                 driveUltimaSync: '', driveError: '', driveFileId: null, driveModifiedTimeConocido: null, driveExcelFileId: null,
@@ -2024,7 +2277,8 @@
                 filasCriticas() {
                     const pf = this.pfFilas.filter(f => typeof f.dias === 'number' && f.dias > 180).map(f => ({ uid: f._uid, texto: `PDV ${f.NRO_SUCURSAL || 'S/N'} (${f.ESTR_DESCRIPCION || ''}) - ${f.dias} días sin inventario` }));
                     const cl = this.clFilas.filter(f => typeof f.dias === 'number' && f.dias > 180).map(f => ({ uid: f._uid, texto: `Depósito ${f.DEPOSITO || 'S/N'} - Sector ${f.SECTOR || ''} - ${f.dias} días sin inventario` }));
-                    return [...pf, ...cl];
+                    const ca = this.caFilas.filter(f => typeof f.dias === 'number' && f.dias > 180).map(f => ({ uid: f._uid, texto: `CA ${f.NRO_SUCURSAL || 'S/N'} (${f.ESTR_DESCRIPCION || ''}) - ${f.dias} días sin inventario` }));
+                    return [...pf, ...cl, ...ca];
                 },
                 // ===== Armar Ruta Viaje =====
                 viajePdvsBase() {
@@ -2132,6 +2386,25 @@
                 clResumenSectores() { const sectores = {}; this.clFilas.forEach(f => { const sector = f.SECTOR || 'Sin sector'; sectores[sector] = (sectores[sector] || 0) + 1; }); return sectores; },
                 clCantidadPDVsUnicos() { return new Set(this.clFilas.map(f => String(f.DEPOSITO || '').trim()).filter(v => v !== '')).size; },
                 clCantidadAuditorias() { return this.clFilas.length; },
+                // ====== CA COMPUTED ======
+                caAuditores() { return this.auditores; },
+                caFilasFiltradas() {
+                    return this.caFilas.filter(f => {
+                        const coincidePDV = !this.caBuscar || (f.NRO_SUCURSAL && String(f.NRO_SUCURSAL).toLowerCase().includes(this.caBuscar.toLowerCase())) || (f.ESTR_DESCRIPCION && f.ESTR_DESCRIPCION.toLowerCase().includes(this.caBuscar.toLowerCase()));
+                        const coincideGrupo = !this.caGrupo || (f.ESTR_GRUPOS && f.ESTR_GRUPOS.toLowerCase().includes(this.caGrupo.toLowerCase()));
+                        const coincideDias = this.filtrarPorDias(f, this.caFiltroDias);
+                        const coincideEstado = !this.caFiltroEstado || f.estado === this.caFiltroEstado;
+                        return coincidePDV && coincideGrupo && coincideDias && coincideEstado;
+                    });
+                },
+                caPendientes() { return this.caFilas.filter(f => f.estado === 'pendiente').length; },
+                caAgendados() { return this.caFilas.filter(f => f.estado === 'agendado').length; },
+                caGenerados() { return this.caFilas.filter(f => f.estado === 'generado').length; },
+                caAuditados() { return this.caFilas.filter(f => f.estado === 'auditado').length; },
+                caReauditados() { return this.caFilas.filter(f => f.estado === 'reauditado').length; },
+                caSeleccionados() { return this.caFilas.filter(f => f.seleccionado).length; },
+                caProgreso() { if (this.caFilas.length === 0) return 0; return Math.round((this.caAuditados / this.caFilas.length) * 100); },
+                caProgresoMes() { const m = this.caFilas.filter(f => esMesActual(f.Ultimo_Inventario)); if (m.length === 0) return 0; return Math.round((m.filter(f => f.estado === 'auditado').length / m.length) * 100); },
                 bitacoraFiltrada() { const q = this.bitacoraBusqueda.trim().toLowerCase(); return this.bitacora.filter(b => { const coincideModulo = !this.bitacoraFiltroModulo || b.modulo === this.bitacoraFiltroModulo; const coincideTexto = !q || (b.accion && b.accion.toLowerCase().includes(q)) || (b.detalle && b.detalle.toLowerCase().includes(q)); return coincideModulo && coincideTexto; }); },
                 // ====== HISTORIAL COMPUTED ======
                 historialFiltrado() {
@@ -2191,6 +2464,7 @@
             },
             watch: {
                 pfFilas: { handler() { this.guardarTodo(); }, deep: true }, clFilas: { handler() { this.guardarTodo(); }, deep: true },
+                caFilas: { handler() { this.guardarTodo(); }, deep: true },
                 auditores: { handler() { this.guardarTodo(); }, deep: true }, auditoresAusentes: { handler() { this.guardarTodo(); }, deep: true },
                 auditoresEquipos: { handler() { this.guardarTodo(); }, deep: true },
                 pfBloqueado() { this.guardarTodo(); }, clBloqueado() { this.guardarTodo(); }, bitacora: { handler() { this.guardarTodo(); }, deep: true }, historialNotificaciones: { handler() { this.guardarTodo(); }, deep: true },
@@ -2275,6 +2549,7 @@
                         };
                         if (Array.isArray(data.pfFilas)) this.pfFilas = fusionarFilas(this.pfFilas, data.pfFilas);
                         if (Array.isArray(data.clFilas)) this.clFilas = fusionarFilas(this.clFilas, data.clFilas);
+                        if (Array.isArray(data.caFilas)) this.caFilas = fusionarFilas(this.caFilas, data.caFilas);
                         // Base de auditores compartida: si vienen datos viejos (pfAuditores/clAuditores separados) se fusionan sin duplicados
                         if (Array.isArray(data.auditores) || Array.isArray(data.pfAuditores) || Array.isArray(data.clAuditores)) {
                             const combinados = [...(Array.isArray(data.auditores) ? data.auditores : []), ...(Array.isArray(data.pfAuditores) ? data.pfAuditores : []), ...(Array.isArray(data.clAuditores) ? data.clAuditores : [])];
@@ -2284,13 +2559,13 @@
                         }
                         if (data.auditoresAusentes && typeof data.auditoresAusentes === 'object' && !Array.isArray(data.auditoresAusentes)) this.auditoresAusentes = data.auditoresAusentes;
                         if (data.auditoresEquipos && typeof data.auditoresEquipos === 'object' && !Array.isArray(data.auditoresEquipos)) this.auditoresEquipos = data.auditoresEquipos;
-                        if (typeof data.pfBloqueado === 'boolean') this.pfBloqueado = data.pfBloqueado; if (typeof data.clBloqueado === 'boolean') this.clBloqueado = data.clBloqueado;
+                        if (typeof data.pfBloqueado === 'boolean') this.pfBloqueado = data.pfBloqueado; if (typeof data.clBloqueado === 'boolean') this.clBloqueado = data.clBloqueado; if (typeof data.caBloqueado === 'boolean') this.caBloqueado = data.caBloqueado;
                         if (Array.isArray(data.bitacora)) this.bitacora = data.bitacora; if (Array.isArray(data.historialNotificaciones)) this.historialNotificaciones = data.historialNotificaciones;
-                        if (data.ultimoMensajePF) this.ultimoMensajePF = data.ultimoMensajePF; if (data.ultimoMensajeCL) this.ultimoMensajeCL = data.ultimoMensajeCL;
+                        if (data.ultimoMensajePF) this.ultimoMensajePF = data.ultimoMensajePF; if (data.ultimoMensajeCL) this.ultimoMensajeCL = data.ultimoMensajeCL; if (data.ultimoMensajeCA) this.ultimoMensajeCA = data.ultimoMensajeCA;
                         if (Array.isArray(data.viajesGuardados)) this.viajesGuardados = data.viajesGuardados.filter(v => v && v.id && Array.isArray(v.puntos)).map(v => ({ ...v, auditores: Array.isArray(v.auditores) ? v.auditores : [] }));
                         if (Array.isArray(data.historialInventarios)) this.historialInventarios = data.historialInventarios;
                         
-                        [...this.pfFilas, ...this.clFilas].forEach(f => {
+                        [...this.pfFilas, ...this.clFilas, ...this.caFilas].forEach(f => {
                             if (!f._uid) f._uid = nextUid(); ajustarContadorUid(f._uid);
                             f.dias = calcularDiasDesde(f.Ultimo_Inventario); f.colorClase = getColorClase(f.dias);
                             if (!Array.isArray(f.personasSeleccionadas)) f.personasSeleccionadas = [];
@@ -2313,7 +2588,7 @@
                     this.$nextTick(() => { setTimeout(() => { this._supresionGuardadoDrive = false; }, 200); });
                 },
                 construirPayload() {
-                    return { version: 1, guardadoEn: new Date().toISOString(), pfFilas: this.pfFilas, clFilas: this.clFilas, auditores: this.auditores, auditoresAusentes: this.auditoresAusentes, auditoresEquipos: this.auditoresEquipos, pfBloqueado: this.pfBloqueado, clBloqueado: this.clBloqueado, bitacora: this.bitacora, historialNotificaciones: this.historialNotificaciones, ultimoMensajePF: this.ultimoMensajePF, ultimoMensajeCL: this.ultimoMensajeCL, viajesGuardados: this.viajesGuardados, historialInventarios: this.historialInventarios };
+                    return { version: 1, guardadoEn: new Date().toISOString(), pfFilas: this.pfFilas, clFilas: this.clFilas, caFilas: this.caFilas, auditores: this.auditores, auditoresAusentes: this.auditoresAusentes, auditoresEquipos: this.auditoresEquipos, pfBloqueado: this.pfBloqueado, clBloqueado: this.clBloqueado, caBloqueado: this.caBloqueado, bitacora: this.bitacora, historialNotificaciones: this.historialNotificaciones, ultimoMensajePF: this.ultimoMensajePF, ultimoMensajeCL: this.ultimoMensajeCL, ultimoMensajeCA: this.ultimoMensajeCA, viajesGuardados: this.viajesGuardados, historialInventarios: this.historialInventarios };
                 },
                 guardarEnAlmacenamiento() {
                     this.guardando = true;
@@ -2373,7 +2648,7 @@
                 quitarLogo() { this.logoBase64 = null; localStorage.removeItem('app_logo'); },
 
                 actualizarDiasTodasFilas() {
-                    [...this.pfFilas, ...this.clFilas].forEach(f => { f.dias = calcularDiasDesde(f.Ultimo_Inventario); f.colorClase = getColorClase(f.dias); });
+                    [...this.pfFilas, ...this.clFilas, ...this.caFilas].forEach(f => { f.dias = calcularDiasDesde(f.Ultimo_Inventario); f.colorClase = getColorClase(f.dias); });
                 },
                 activarNotificacionesPush() {
                     if (typeof Notification === 'undefined') { this.notificar('Este navegador no soporta notificaciones push.', 'error'); return; }
@@ -2596,6 +2871,10 @@
                     const filasCL = [headersCL, ...this.clFilas.map(f => this.filaAExcelCL(f))];
                     const wsCL = XLSX.utils.aoa_to_sheet(filasCL);
                     XLSX.utils.book_append_sheet(wb, wsCL, 'Centro Logístico');
+                    // Hoja Control Administrativo
+                    const filasCA = [headersPF, ...this.caFilas.map(f => this.filaAExcelPF(f))];
+                    const wsCA = XLSX.utils.aoa_to_sheet(filasCA);
+                    XLSX.utils.book_append_sheet(wb, wsCA, 'Control Administrativo');
                     // Hoja dedicada a las reauditorías: quedan registradas aparte y no se mezclan/pisan con el resto.
                     const headersRe = ['Módulo', 'Identificador', 'Descripción / Sector', 'Motivo Reauditoría', 'Estado', 'Último Inventario', 'Días', 'Auditores', 'Supervisores', 'Cant. Auditores (sin Sup.)'];
                     const filaRe = (f, modulo) => [modulo, modulo === 'PDV' ? (f.NRO_SUCURSAL || 'S/N') : (f.DEPOSITO || 'S/N'), modulo === 'PDV' ? (f.ESTR_DESCRIPCION || '') : (f.SECTOR || ''), f.motivoReauditoria || '', this.estadoTexto(f.estado), f.Ultimo_Inventario || '', f.dias !== null && f.dias !== undefined ? f.dias : '', (f.personasSeleccionadas || []).join(', '), (f.supervisoresSeleccionados || []).join(', '), this.cantAuditoresNetos(f)];
@@ -2839,18 +3118,29 @@
                         try {
                             const workbook = XLSX.read(e.target.result, { type: 'array' }); const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
                             if (!jsonData || jsonData.length === 0) return;
-                            const clavesExistentes = new Set(this.pfAuditores.map(normalizarClave)); let importados = 0; let duplicados = 0;
+                            // ⭐ REEMPLAZAR completamente la lista para que sea fiel copia del Excel
+                            const nuevosAuditores = [];
+                            const clavesSeen = new Set();
                             jsonData.forEach(row => {
-                                const nombre = String(row['Nombre y Apellido'] || row['NOMBRE Y APELLIDO'] || row['Nombre'] || '').trim();
+                                const nombre = String(row['Nombre y Apellido'] || row['NOMBRE Y APELLIDO'] || row['Auditor'] || row['AUDITOR'] || row['Nombre'] || '').trim();
                                 if (nombre) {
                                     const clave = normalizarClave(nombre);
-                                    if (!clavesExistentes.has(clave)) { this.auditores.push(nombre); clavesExistentes.add(clave); importados++; } else duplicados++;
+                                    if (!clavesSeen.has(clave)) { clavesSeen.add(clave); nuevosAuditores.push(nombre); }
                                     // ⭐ Importar equipo si viene en la columna
                                     const equipo = String(row['EQUIPO'] || row['Equipo'] || row['equipo'] || '').trim();
                                     if (equipo) this.$set(this.auditoresEquipos, clave, equipo);
                                 }
                             });
-                            this.notificar(`${importados} importados` + (duplicados ? `, ${duplicados} ya existían.` : '.'), 'success');
+                            // Conservar auditores que ya existen en filas asignadas pero que no vinieron en el Excel
+                            const nombresEnFilas = new Set();
+                            [...this.pfFilas, ...this.clFilas, ...this.caFilas].forEach(f => {
+                                (f.personasSeleccionadas || []).forEach(p => nombresEnFilas.add(normalizarClave(p)));
+                                (f.supervisoresSeleccionados || []).forEach(p => nombresEnFilas.add(normalizarClave(p)));
+                            });
+                            // Auditores en filas que no vienen en el Excel nuevo → conservar para no romper asignaciones
+                            const conservados = this.auditores.filter(a => nombresEnFilas.has(normalizarClave(a)) && !clavesSeen.has(normalizarClave(a)));
+                            this.auditores = [...nuevosAuditores, ...conservados];
+                            this.notificar(`✅ ${nuevosAuditores.length} auditor(es) importados. Lista actualizada.`, 'success');
                         } catch (error) { this.notificar('Error al leer Excel.', 'error'); }
                     };
                     reader.readAsArrayBuffer(file); event.target.value = '';
@@ -3051,6 +3341,110 @@
                 clAbrirReauditar() { if (this.clFilas.filter(f => f.seleccionado && (f.estado === 'auditado' || f.estado === 'reauditado')).length === 0) return; this.reauditarModulo = 'cl'; this.reauditarMotivo = null; this.reauditarMostrar = true; },
                 clExportarCSV() { this.exportarCSV('cl'); },
 
+                // ======== Métodos CA (Control Administrativo) ========
+                caAuditoresDisponibles(fila) { return this.auditores.filter(a => !fila.personasSeleccionadas.includes(a) && !this.esAusente(a)); },
+                caSupervisoresDisponibles(fila) { return fila.personasSeleccionadas.filter(p => !fila.supervisoresSeleccionados.includes(p)); },
+                caAgregarFila() {
+                    if (this.noDrive()) return; if (this.caBloqueado) return;
+                    this.caFilas.push({ _uid: nextUid(), NRO_SUCURSAL: '', ESTR_COD: '', ESTR_DESCRIPCION: '', UBIC_TIPO: '', UBIC_ABREVIATURA: '', AÑO_APER: '', Ultimo_Inventario: '', CLUS_DESCRIPCION: '', CANT_GONDOLAS: '', ESTR_GRUPOS: '', ENCAR_FCH_NACI: '', ANTIGUEDAD_ENCAR: '', ESTR_DESCRI: '', NOMBRE_ENCARGADO: '', NOMBRE_SUPERVISOR: '', NOMBRE_ADMINITRATIVO: '', DEPARTAMENTO: '', CIUDAD: '', LATITUD: null, LONGITUD: null, TIPO: '', personasSeleccionadas: [], auditoresWifi: [], personaTemp: '', supervisorTemp: '', horaConvocatoria: '07:30', horaSalida: '17:30', dias: null, colorClase: '', seleccionado: true, estado: 'pendiente', motivoReauditoria: null, supervisoresSeleccionados: [], esReauditoria: false, tieneReauditoria: false, origenUid: null, reauditoriaUid: null, fechaRealInventario: '', diasCongelados: undefined, colorClaseCongelada: '' });
+                    this.marcarUidLocal(this.caFilas[this.caFilas.length - 1]._uid);
+                    this.registrarBitacora('CA', 'Alta manual', 'Se agregó un nuevo registro de Control Administrativo.');
+                },
+                caEliminarFila(index) {
+                    if (this.noDrive()) return;
+                    if (confirm('¿Estás seguro de eliminar este registro?')) {
+                        const fila = this.caFilasFiltradas[index]; const realIndex = this.caFilas.findIndex(f => f._uid === fila._uid);
+                        if (realIndex !== -1) { this.registrarBitacora('CA', 'Eliminación', `Registro CA eliminado: ${fila.NRO_SUCURSAL || 'S/N'}.`); this.caFilas.splice(realIndex, 1); }
+                    }
+                },
+                caCalcularDias(index) { const fila = this.caFilasFiltradas[index]; const dias = calcularDiasDesde(fila.Ultimo_Inventario); fila.dias = dias; fila.colorClase = getColorClase(dias); },
+                caToggleTodos() { this.caFilasFiltradas.forEach(f => f.seleccionado = this.caSeleccionarTodos); },
+                caAgregarPersona(index, nombre) {
+                    if (this.noDrive()) return;
+                    const fila = this.caFilasFiltradas[index]; if (!fila || !nombre) return;
+                    if (!fila.personasSeleccionadas.includes(nombre)) { fila.personasSeleccionadas.push(nombre); if (fila.supervisoresSeleccionados.length === 0) fila.supervisoresSeleccionados.push(nombre); }
+                },
+                caQuitarPersona(index) {
+                    if (this.noDrive()) return;
+                    const fila = this.caFilasFiltradas[index];
+                    if (fila.personasSeleccionadas.length > 0) {
+                        const removido = fila.personasSeleccionadas.pop();
+                        const idx = fila.supervisoresSeleccionados.indexOf(removido); if (idx !== -1) fila.supervisoresSeleccionados.splice(idx, 1);
+                        const wIdx = fila.auditoresWifi.indexOf(removido); if (wIdx !== -1) fila.auditoresWifi.splice(wIdx, 1);
+                    }
+                },
+                caAgregarSupervisor(index) {
+                    if (this.noDrive()) return;
+                    const fila = this.caFilasFiltradas[index]; if (!fila) return; const valor = fila.supervisorTemp;
+                    if (valor && fila.personasSeleccionadas.includes(valor) && !fila.supervisoresSeleccionados.includes(valor)) fila.supervisoresSeleccionados.push(valor);
+                    fila.supervisorTemp = '';
+                },
+                caQuitarSupervisor(index, nombre) { const fila = this.caFilasFiltradas[index]; if (!fila) return; const idx = fila.supervisoresSeleccionados.indexOf(nombre); if (idx !== -1) fila.supervisoresSeleccionados.splice(idx, 1); },
+                caCambiarEstado(index) {
+                    if (this.noDrive()) return;
+                    const fila = this.caFilasFiltradas[index]; if (!fila) return;
+                    if (fila.estado === 'pendiente' || fila.estado === 'agendado') {
+                        fila.motivoReauditoria = null;
+                        if (fila.fechaRealInventario) { fila.fechaRealInventario = ''; fila.diasCongelados = undefined; fila.colorClaseCongelada = ''; }
+                    }
+                    if (fila.estado === 'auditado' || fila.estado === 'reauditado') {
+                        if (!fila.fechaRealInventario) {
+                            this.auditadoFechaFilaPendiente = fila;
+                            this.auditadoFechaModulo = 'ca';
+                            this.auditadoFechaValor = this.hoyIso();
+                            this.auditadoFechaMostrar = true;
+                            return;
+                        }
+                    }
+                    this.registrarBitacora('CA', 'Cambio manual de estado', `Registro ${fila.NRO_SUCURSAL || 'S/N'} cambiado a: ${this.estadoTexto(fila.estado)}.`);
+                    this.notificar(`Estado actualizado.`, 'info');
+                },
+                caImportarBD(event) {
+                    const file = event.target.files[0]; if (!file) return; const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const workbook = XLSX.read(e.target.result, { type: 'array' }); const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                            let importados = 0;
+                            if (this.caFilas.length > 0) {
+                                const fechaVersionStr = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                                const auditadosActuales = this.caFilas.filter(f => f.estado === 'auditado' || f.estado === 'reauditado');
+                                if (auditadosActuales.length > 0) this.agregarSnapshotHistorial(auditadosActuales, 'CA (archivo anterior ' + fechaVersionStr + ')');
+                                if (!confirm(`Ya hay ${this.caFilas.length} registro(s) de Control Administrativo cargados.\n\n¿Reemplazar?\n\nLos datos auditados actuales se guardarán en el Historial.`)) { event.target.value = ''; return; }
+                                this.caFilas = [];
+                            }
+                            jsonData.forEach(row => {
+                                let fechaConvertida = row['Ultimo Inventario'] ? convertirFecha(row['Ultimo Inventario']) : '';
+                                const fila = { _uid: nextUid(), NRO_SUCURSAL: row['NRO_SUCURSAL'] || '', ESTR_COD: row['ESTR_COD'] || '', ESTR_DESCRIPCION: row['ESTR_DESCRIPCION'] || row['Columna1'] || '', UBIC_TIPO: row['UBIC_TIPO'] || '', UBIC_ABREVIATURA: row['UBIC_ABREVIATURA'] || '', AÑO_APER: row['AÑO_APER'] || '', Ultimo_Inventario: fechaConvertida, CLUS_DESCRIPCION: row['CLUS_DESCRIPCION'] || '', CANT_GONDOLAS: row['CANT_GONDOLAS'] || '', ESTR_GRUPOS: row['ESTR_GRUPOS'] || '', ENCAR_FCH_NACI: row['ENCAR_FCH_NACI'] || '', ANTIGUEDAD_ENCAR: row['ANTIGUEDAD_ENCAR'] || '', ESTR_DESCRI: row['ESTR_DESCRI'] || '', NOMBRE_ENCARGADO: row['NOMBRE_ENCARGADO'] || '', NOMBRE_SUPERVISOR: row['NOMBRE_SUPERVISOR'] || '', NOMBRE_ADMINITRATIVO: row['NOMBRE_ADMINITRATIVO'] || '', DEPARTAMENTO: String(row['DEPARTAMENTO'] || '').trim(), CIUDAD: String(row['CIUDAD'] || '').trim(), LATITUD: parsearCoordenada(row['LATITUD'] !== undefined ? row['LATITUD'] : row['Latitud']), LONGITUD: parsearCoordenada(row['LONGITUD'] !== undefined ? row['LONGITUD'] : row['Longitud']), TIPO: String(row['TIPO'] || '').trim(), personasSeleccionadas: [], auditoresWifi: [], personaTemp: '', supervisorTemp: '', horaConvocatoria: row['HORA_CONVOCATORIA'] || '07:30', horaSalida: row['HORA_SALIDA'] || '17:30', seleccionado: true, estado: 'pendiente', motivoReauditoria: null, supervisoresSeleccionados: [], esReauditoria: false, tieneReauditoria: false, origenUid: null, reauditoriaUid: null, fechaRealInventario: '', diasCongelados: undefined, colorClaseCongelada: '' };
+                                fila.dias = calcularDiasDesde(fila.Ultimo_Inventario); fila.colorClase = getColorClase(fila.dias);
+                                this.marcarUidLocal(fila._uid); this.caFilas.push(fila); importados++;
+                            });
+                            this.caBloqueado = true; this.notificar(`✅ ${importados} registros de Control Administrativo importados.`, 'success');
+                        } catch (error) { this.notificar('Error al leer el archivo.', 'error'); }
+                    };
+                    reader.readAsArrayBuffer(file); event.target.value = '';
+                },
+                caAgregarAuditor() {
+                    if (this.noDrive()) return;
+                    const nombre = this.caNuevoAuditorNombre.trim(); if (!nombre) return;
+                    if (!this.auditores.some(a => normalizarClave(a) === normalizarClave(nombre))) { this.auditores.push(nombre); this.caNuevoAuditorNombre = ''; this.notificar('Auditor agregado.', 'success'); } else this.notificar('Ya existe.', 'warning');
+                },
+                caToggleAgendar() {
+                    if (this.noDrive()) return;
+                    const pendientes = this.caFilas.filter(f => f.seleccionado && f.estado === 'pendiente');
+                    if (pendientes.length > 0) { pendientes.forEach(f => f.estado = 'agendado'); this.notificar('Registros CA agendados.', 'success'); }
+                    else { const agendados = this.caFilas.filter(f => f.seleccionado && f.estado === 'agendado'); if (agendados.length > 0) { agendados.forEach(f => f.estado = 'pendiente'); this.notificar('Registros CA desagendados.', 'info'); } }
+                },
+                caGenerar() {
+                    if (this.noDrive()) return;
+                    const agendados = this.caFilas.filter(f => f.seleccionado && f.estado === 'agendado'); if (agendados.length === 0) { this.notificar('No hay registros CA agendados.', 'warning'); return; }
+                    agendados.forEach(f => f.estado = 'generado'); const texto = this.generarTexto(agendados, false);
+                    const msgData = { modulo: 'Control Administrativo', cantidad: agendados.length, fecha: formatearFecha(getFechaManana()), texto: texto, textoHtml: escapeHtml(texto).replace(/\n/g, '<br>'), puntos: agendados, vecesCompartido: 0 };
+                    this.ultimoMensajeCA = msgData; this.restaurarMensaje(msgData);
+                    this.registrarBitacora('CA', 'Generar cronograma', `${agendados.length} registro(s) CA generados.`);
+                },
+                caAbrirReauditar() { if (this.caFilas.filter(f => f.seleccionado && (f.estado === 'auditado' || f.estado === 'reauditado')).length === 0) return; this.reauditarModulo = 'ca'; this.reauditarMotivo = null; this.reauditarMostrar = true; },
+                caExportarCSV() { this.exportarCSV('ca'); },
+
                 // Global Methods
                 generarTexto(puntos, esCL) {
                     if (!puntos || puntos.length === 0) return null;
@@ -3151,7 +3545,7 @@
                     const fechaElegida = this.auditadoFechaValor;
                     if (this.auditadoFechaFilaPendiente === '__generado__') {
                         // Flujo del botón "Marcar como Auditado" del modal de cronograma
-                        const data = [...this.pfFilas, ...this.clFilas];
+                        const data = [...this.pfFilas, ...this.clFilas, ...this.caFilas];
                         const auditadosAhora = [];
                         this.generadoPuntos.forEach(f => {
                             const fila = data.find(ff => ff._uid === f._uid);
@@ -3482,7 +3876,7 @@
                 },
                 reauditarConfirmar() {
                     if (this.noDrive()) return;
-                    if (!this.reauditarMotivo) return; const data = this.reauditarModulo === 'pf' ? this.pfFilas : this.clFilas;
+                    if (!this.reauditarMotivo) return; const data = this.reauditarModulo === 'pf' ? this.pfFilas : (this.reauditarModulo === 'ca' ? this.caFilas : this.clFilas);
                     const seleccionados = data.filter(f => f.seleccionado && (f.estado === 'auditado' || f.estado === 'reauditado'));
                     const motivoTexto = this.motivosReauditoria.find(m => m.valor === this.reauditarMotivo)?.texto || '';
                     seleccionados.forEach(original => {
@@ -3495,11 +3889,13 @@
                 confirmarEliminarTodo() {
                     if (this.noDrive()) return;
                     if (this.eliminarPassword.trim().toUpperCase() !== 'ELIMINAR') return;
-                    if (this.eliminarModulo === 'pf') { this.pfFilas = []; this.pfBloqueado = false; this.ultimoMensajePF = null; } else { this.clFilas = []; this.clBloqueado = false; this.ultimoMensajeCL = null; }
+                    if (this.eliminarModulo === 'pf') { this.pfFilas = []; this.pfBloqueado = false; this.ultimoMensajePF = null; }
+                    else if (this.eliminarModulo === 'cl') { this.clFilas = []; this.clBloqueado = false; this.ultimoMensajeCL = null; }
+                    else if (this.eliminarModulo === 'ca') { this.caFilas = []; this.caBloqueado = false; this.ultimoMensajeCA = null; }
                     this.eliminarMostrar = false; this.notificar('Datos eliminados.', 'success');
                 },
                 exportarCSV(modulo) {
-                    const data = modulo === 'pf' ? this.pfFilas : this.clFilas;
+                    const data = modulo === 'pf' ? this.pfFilas : (modulo === 'ca' ? this.caFilas : this.clFilas);
                     if (data.length === 0) return;
                     let headers = modulo === 'cl' ? 
                         ['DEPOSITO', 'SECTOR', 'Ultimo Inventario', 'Días', 'HORA_CONVOCATORIA', 'HORA_SALIDA', 'PERSONAS_ASIGNADAS', 'SUPERVISORES', 'CANT_AUDITORES_SIN_SUP', 'AUDITORES_WIFI', 'SELECCIONADO', 'ESTADO', 'MOTIVO', 'ES_REAUDITORIA', 'TIENE_REAUDITORIA'] : 
