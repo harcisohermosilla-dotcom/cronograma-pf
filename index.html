@@ -759,8 +759,14 @@
                         <td><input class="input-sm" :class="{ 'no-edit': pfBloqueado }" v-model="fila.UBIC_TIPO" :disabled="pfBloqueado" style="min-width:50px;"></td>
                         <td><input class="input-sm" :class="{ 'no-edit': pfBloqueado }" v-model="fila.UBIC_ABREVIATURA" :disabled="pfBloqueado" style="min-width:40px;"></td>
                         <td><input class="input-sm" :class="{ 'no-edit': pfBloqueado }" v-model="fila.AÑO_APER" :disabled="pfBloqueado" style="min-width:40px;"></td>
-                        <td><input class="input-date" type="date" v-model="fila.Ultimo_Inventario" @change="pfCalcularDias(index)" style="min-width:120px;"></td>
-                        <td><span class="dias-cell" :class="fila.colorClase">{{ fila.dias !== null ? fila.dias : '-' }}</span></td>
+                        <td><input class="input-date" type="date" v-model="fila.Ultimo_Inventario" @change="pfCalcularDias(index)" style="min-width:120px;" :title="fila.fechaRealInventario ? '📅 Actualizado al marcar Auditado el ' + fila.fechaRealInventario : ''"></td>
+                        <td>
+                            <span class="dias-cell" :class="fila.colorClase"
+                                :title="fila.fechaRealInventario ? '🔄 Días desde el último inventario auditado (' + fila.fechaRealInventario + ')' : 'Días desde el último inventario'">
+                                {{ fila.dias !== null ? fila.dias : '-' }}
+                                <i v-if="fila.fechaRealInventario" class="fas fa-sync-alt" style="font-size:0.5rem;color:#7c3aed;margin-left:2px;" title="Contador reiniciado desde la fecha de auditoría"></i>
+                            </span>
+                        </td>
                         <td><input class="input-sm" type="time" v-model="fila.horaConvocatoria" style="min-width:80px;"></td>
                         <td><input class="input-sm" type="time" v-model="fila.horaSalida" style="min-width:80px;"></td>
                         <td><input class="input-sm" :class="{ 'no-edit': pfBloqueado }" v-model="fila.CLUS_DESCRIPCION" :disabled="pfBloqueado"></td>
@@ -961,8 +967,14 @@
                         <td><input type="checkbox" class="checkbox-punto" v-model="fila.seleccionado"></td>
                         <td><input class="input-sm" :class="{ 'no-edit': clBloqueado }" v-model="fila.DEPOSITO" :disabled="clBloqueado" placeholder="Depósito" style="min-width:90px;"></td>
                         <td><input class="input-sm" :class="{ 'no-edit': clBloqueado }" v-model="fila.SECTOR" :disabled="clBloqueado" placeholder="Sector" style="min-width:90px;"></td>
-                        <td><input class="input-date" type="date" v-model="fila.Ultimo_Inventario" @change="clCalcularDias(index)" style="min-width:120px;"></td>
-                        <td><span class="dias-cell" :class="fila.colorClase">{{ fila.dias !== null ? fila.dias : '-' }}</span></td>
+                        <td><input class="input-date" type="date" v-model="fila.Ultimo_Inventario" @change="clCalcularDias(index)" style="min-width:120px;" :title="fila.fechaRealInventario ? '📅 Actualizado al marcar Auditado el ' + fila.fechaRealInventario : ''"></td>
+                        <td>
+                            <span class="dias-cell" :class="fila.colorClase"
+                                :title="fila.fechaRealInventario ? '🔄 Días desde el último inventario auditado (' + fila.fechaRealInventario + ')' : 'Días desde el último inventario'">
+                                {{ fila.dias !== null ? fila.dias : '-' }}
+                                <i v-if="fila.fechaRealInventario" class="fas fa-sync-alt" style="font-size:0.5rem;color:#7c3aed;margin-left:2px;"></i>
+                            </span>
+                        </td>
                         <td><input class="input-sm" type="time" v-model="fila.horaConvocatoria" style="min-width:80px;"></td>
                         <td><input class="input-sm" type="time" v-model="fila.horaSalida" style="min-width:80px;"></td>
                         <td>
@@ -1645,8 +1657,14 @@
                         <td><input class="input-sm" :class="{ 'no-edit': caBloqueado }" v-model="fila.UBIC_TIPO" :disabled="caBloqueado" style="min-width:50px;"></td>
                         <td><input class="input-sm" :class="{ 'no-edit': caBloqueado }" v-model="fila.UBIC_ABREVIATURA" :disabled="caBloqueado" style="min-width:40px;"></td>
                         <td><input class="input-sm" :class="{ 'no-edit': caBloqueado }" v-model="fila.AÑO_APER" :disabled="caBloqueado" style="min-width:40px;"></td>
-                        <td><input class="input-date" type="date" v-model="fila.Ultimo_Inventario" @change="caCalcularDias(index)" style="min-width:120px;"></td>
-                        <td><span class="dias-cell" :class="fila.colorClase">{{ fila.dias !== null ? fila.dias : '-' }}</span></td>
+                        <td><input class="input-date" type="date" v-model="fila.Ultimo_Inventario" @change="caCalcularDias(index)" style="min-width:120px;" :title="fila.fechaRealInventario ? '📅 Actualizado al marcar Auditado el ' + fila.fechaRealInventario : ''"></td>
+                        <td>
+                            <span class="dias-cell" :class="fila.colorClase"
+                                :title="fila.fechaRealInventario ? '🔄 Días desde el último inventario auditado (' + fila.fechaRealInventario + ')' : 'Días desde el último inventario'">
+                                {{ fila.dias !== null ? fila.dias : '-' }}
+                                <i v-if="fila.fechaRealInventario" class="fas fa-sync-alt" style="font-size:0.5rem;color:#7c3aed;margin-left:2px;"></i>
+                            </span>
+                        </td>
                         <td><input class="input-sm" type="time" v-model="fila.horaConvocatoria" style="min-width:80px;"></td>
                         <td><input class="input-sm" type="time" v-model="fila.horaSalida" style="min-width:80px;"></td>
                         <td><input class="input-sm" :class="{ 'no-edit': caBloqueado }" v-model="fila.CLUS_DESCRIPCION" :disabled="caBloqueado"></td>
@@ -3593,6 +3611,26 @@
                 confirmarAuditadoFecha() {
                     if (!this.auditadoFechaValor) { this.notificar('Seleccioná una fecha.', 'warning'); return; }
                     const fechaElegida = this.auditadoFechaValor;
+
+                    // ── Helper: aplica la fecha auditada a una fila ──────────────────────
+                    const aplicarFechaAFila = (fila) => {
+                        if (!fila || fila.fechaRealInventario) return; // ya procesada
+                        // Guardar cuántos días habían pasado desde el inventario ANTERIOR
+                        const ultimoAnterior = fila.Ultimo_Inventario;
+                        const diasDesdeAnterior = ultimoAnterior
+                            ? Math.max(0, Math.floor((new Date(fechaElegida) - new Date(ultimoAnterior)) / 86400000))
+                            : (fila.dias !== null && fila.dias !== undefined ? fila.dias : 0);
+                        // ⭐ Congelar: fecha y días históricos (cuánto tardó el ciclo anterior)
+                        fila.fechaRealInventario = fechaElegida;
+                        fila.diasCongelados     = diasDesdeAnterior;
+                        fila.colorClaseCongelada = getColorClase(diasDesdeAnterior);
+                        // ⭐ Resetear el contador vivo: el NUEVO "Último Inventario" es la fecha auditada
+                        fila.Ultimo_Inventario = fechaElegida;
+                        fila.dias      = calcularDiasDesde(fechaElegida); // ≈ 0 si es hoy
+                        fila.colorClase = getColorClase(fila.dias);
+                        fila.estado    = fila.estado; // mantiene 'auditado' / 'reauditado'
+                    };
+
                     if (this.auditadoFechaFilaPendiente === '__generado__') {
                         // Flujo del botón "Marcar como Auditado" del modal de cronograma
                         const data = [...this.pfFilas, ...this.clFilas, ...this.caFilas];
@@ -3601,42 +3639,31 @@
                             const fila = data.find(ff => ff._uid === f._uid);
                             if (fila && fila.estado !== 'auditado') {
                                 fila.estado = 'auditado';
-                                if (!fila.fechaRealInventario) {
-                                    fila.fechaRealInventario = fechaElegida;
-                                    // Calcular días desde el ÚLTIMO INVENTARIO original hasta la fecha elegida
-                                    const diasCalculados = fila.Ultimo_Inventario ? Math.floor((new Date(fechaElegida) - new Date(fila.Ultimo_Inventario)) / 86400000) : (fila.dias !== null ? fila.dias : 0);
-                                    fila.diasCongelados = diasCalculados >= 0 ? diasCalculados : 0;
-                                    fila.colorClaseCongelada = getColorClase(fila.diasCongelados);
-                                    // Actualizar Ultimo_Inventario con la fecha real del inventario
-                                    fila.Ultimo_Inventario = fechaElegida;
-                                }
+                                aplicarFechaAFila(fila);
                                 auditadosAhora.push(fila);
                             }
                         });
                         if (auditadosAhora.length > 0) {
                             const esPF = this.generadoModulo.includes('Ventas') || this.generadoModulo.includes('PDV');
                             const esCL = this.generadoModulo.includes('Logístico');
-                            const modulo = esPF && esCL ? 'PF + CL' : (esPF ? 'PF' : 'CL');
+                            const esCA = this.generadoModulo.includes('Administrativo');
+                            const modulo = (esPF && esCL) ? 'PF + CL' : esPF ? 'PF' : esCL ? 'CL' : esCA ? 'CA' : 'PF';
                             this.agregarSnapshotHistorial(auditadosAhora, modulo);
                         }
                         this.generadoMostrar = false;
                     } else {
-                        // Flujo individual (pfCambiarEstado / clCambiarEstado)
+                        // Flujo individual (pfCambiarEstado / clCambiarEstado / caCambiarEstado)
                         const fila = this.auditadoFechaFilaPendiente;
                         if (fila) {
-                            fila.fechaRealInventario = fechaElegida;
-                            const diasCalculados = fila.Ultimo_Inventario ? Math.floor((new Date(fechaElegida) - new Date(fila.Ultimo_Inventario)) / 86400000) : (fila.dias !== null ? fila.dias : 0);
-                            fila.diasCongelados = diasCalculados >= 0 ? diasCalculados : 0;
-                            fila.colorClaseCongelada = getColorClase(fila.diasCongelados);
-                            // Actualizar Ultimo_Inventario con la fecha real del inventario
-                            fila.Ultimo_Inventario = fechaElegida;
-                            fila.dias = calcularDiasDesde(fechaElegida);
-                            fila.colorClase = getColorClase(fila.dias);
-                            const modulo = this.auditadoFechaModulo === 'pf' ? 'PF' : 'CL';
+                            aplicarFechaAFila(fila);
+                            const modulo = this.auditadoFechaModulo === 'pf' ? 'PF' : this.auditadoFechaModulo === 'ca' ? 'CA' : 'CL';
                             this.agregarSnapshotHistorial([fila], modulo);
                             const id = fila.NRO_SUCURSAL || fila.DEPOSITO || 'S/N';
-                            this.registrarBitacora(modulo, 'Cambio manual de estado', `${modulo === 'PF' ? 'PDV' : 'Depósito'} ${id} auditado. Fecha inventario: ${fechaElegida}. Días: ${fila.diasCongelados}.`);
-                            this.notificar(`✅ Auditado el ${fechaElegida}. Último inventario actualizado.`, 'success');
+                            const desc = fila.ESTR_DESCRIPCION || fila.SECTOR || '';
+                            this.registrarBitacora(modulo, 'Marcado como Auditado',
+                                `${modulo} ${id}${desc ? ' - ' + desc : ''} auditado el ${fechaElegida}. ` +
+                                `Días del ciclo anterior: ${fila.diasCongelados}. Contador reiniciado.`);
+                            this.notificar(`✅ Auditado el ${fechaElegida}. Contador de días reiniciado desde esa fecha.`, 'success');
                         }
                     }
                     this.auditadoFechaMostrar = false;
@@ -3644,14 +3671,16 @@
                     this.auditadoFechaValor = '';
                 },
                 cancelarAuditadoFecha() {
-                    // El usuario cancela: revertir el estado al anterior
+                    // El usuario cancela: revertir el estado a pendiente (era pendiente/agendado/generado antes)
                     const fila = this.auditadoFechaFilaPendiente;
                     if (fila && fila !== '__generado__') {
-                        fila.estado = 'generado'; // volver a generado (era el estado antes de cambiar)
+                        // Volver al último estado "no auditado" sensato
+                        fila.estado = fila.esReauditoria ? 'pendiente' : (fila.motivoReauditoria ? 'pendiente' : 'pendiente');
                     }
                     this.auditadoFechaMostrar = false;
                     this.auditadoFechaFilaPendiente = null;
                     this.auditadoFechaValor = '';
+                    this.notificar('Operación cancelada. El estado fue revertido a pendiente.', 'info');
                 },
                 // ======== EQUIPOS DE AUDITORES ========
                 getEquipoAuditor(nombre) {
@@ -3926,14 +3955,48 @@
                 },
                 reauditarConfirmar() {
                     if (this.noDrive()) return;
-                    if (!this.reauditarMotivo) return; const data = this.reauditarModulo === 'pf' ? this.pfFilas : (this.reauditarModulo === 'ca' ? this.caFilas : this.clFilas);
+                    if (!this.reauditarMotivo) return;
+                    const data = this.reauditarModulo === 'pf' ? this.pfFilas : (this.reauditarModulo === 'ca' ? this.caFilas : this.clFilas);
                     const seleccionados = data.filter(f => f.seleccionado && (f.estado === 'auditado' || f.estado === 'reauditado'));
                     const motivoTexto = this.motivosReauditoria.find(m => m.valor === this.reauditarMotivo)?.texto || '';
                     seleccionados.forEach(original => {
-                        const nuevo = { ...original, _uid: nextUid(), personasSeleccionadas: [...original.personasSeleccionadas], supervisoresSeleccionados: [...original.supervisoresSeleccionados], auditoresWifi: [...(original.auditoresWifi || [])], personaTemp: '', supervisorTemp: '', seleccionado: true, estado: 'pendiente', motivoReauditoria: motivoTexto, esReauditoria: true, tieneReauditoria: false, origenUid: original._uid, reauditoriaUid: null, Ultimo_Inventario: '', dias: null, colorClase: '', horaConvocatoria: '07:30', horaSalida: '17:30' };
-                        this.marcarUidLocal(nuevo._uid); data.push(nuevo); original.tieneReauditoria = true; original.reauditoriaUid = nuevo._uid;
+                        // ⭐ El nuevo ciclo arranca desde la fecha en que se hizo el inventario auditado
+                        // (fechaRealInventario si existe, sino Ultimo_Inventario)
+                        const fechaBaseNuevoCiclo = original.fechaRealInventario || original.Ultimo_Inventario || '';
+                        const nuevo = {
+                            ...original,
+                            _uid: nextUid(),
+                            personasSeleccionadas: [...original.personasSeleccionadas],
+                            supervisoresSeleccionados: [...original.supervisoresSeleccionados],
+                            auditoresWifi: [...(original.auditoresWifi || [])],
+                            personaTemp: '', supervisorTemp: '',
+                            seleccionado: true,
+                            estado: 'pendiente',
+                            motivoReauditoria: motivoTexto,
+                            esReauditoria: true,
+                            tieneReauditoria: false,
+                            origenUid: original._uid,
+                            reauditoriaUid: null,
+                            // ⭐ Nuevo Último Inventario = fecha en que se auditó (reinicia el contador)
+                            Ultimo_Inventario: fechaBaseNuevoCiclo,
+                            // ⭐ Limpiar los congelados del ciclo anterior — este es un ciclo nuevo
+                            fechaRealInventario: '',
+                            diasCongelados: undefined,
+                            colorClaseCongelada: '',
+                            horaConvocatoria: '07:30',
+                            horaSalida: '17:30',
+                        };
+                        // Recalcular días del nuevo ciclo desde la fecha base
+                        nuevo.dias = calcularDiasDesde(fechaBaseNuevoCiclo);
+                        nuevo.colorClase = getColorClase(nuevo.dias);
+                        this.marcarUidLocal(nuevo._uid);
+                        data.push(nuevo);
+                        original.tieneReauditoria = true;
+                        original.reauditoriaUid = nuevo._uid;
                     });
-                    this.reauditarMostrar = false; this.reauditarMotivo = null; this.notificar('Reauditorías generadas.', 'success');
+                    this.reauditarMostrar = false;
+                    this.reauditarMotivo = null;
+                    this.notificar('Reauditorías generadas. El contador de días parte desde la fecha del último inventario auditado.', 'success');
                 },
                 abrirEliminarTodo(modulo) { this.eliminarModulo = modulo; this.eliminarPassword = ''; this.eliminarMostrar = true; },
                 confirmarEliminarTodo() {
