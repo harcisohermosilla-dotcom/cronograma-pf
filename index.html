@@ -1048,12 +1048,53 @@
 
     <!-- Modals -->
     <div class="modal-overlay" v-if="mostrarAuditoresModal" @click.self="mostrarAuditoresModal = false">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width:820px;">
             <button class="close-modal" @click="mostrarAuditoresModal = false">&times;</button>
             <h2><i class="fas fa-users" style="color:#2563eb;"></i> Listado de Auditores - {{ auditoresModalTitulo }}</h2>
-            <div style="margin-bottom:12px;"><input type="text" class="search-auditor" v-model="auditoresModalBusqueda" placeholder="🔍 Buscar auditor..."></div>
+
+            <!-- PANEL DISPONIBILIDAD POR EQUIPO -->
+            <div v-if="equiposLista.length > 0" style="margin-bottom:14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:12px 16px;">
+                <div style="font-weight:700;font-size:0.8rem;color:#166534;margin-bottom:10px;"><i class="fas fa-layer-group"></i> Disponibilidad por Equipo — hoy</div>
+                <div style="display:flex;flex-wrap:wrap;gap:10px;">
+                    <div v-for="eq in equiposLista" :key="eq"
+                        @click="auditoresModalFiltroEquipo = auditoresModalFiltroEquipo === eq ? '' : eq"
+                        :style="auditoresModalFiltroEquipo === eq ? 'border-color:#2563eb;background:#eff6ff;' : ''"
+                        style="background:white;border:1.5px solid #d1fae5;border-radius:12px;padding:8px 14px;cursor:pointer;min-width:130px;transition:0.15s;">
+                        <div style="font-size:0.65rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:2px;">{{ eq }}</div>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <span style="font-size:1.3rem;font-weight:800;color:#166534;">{{ (disponibilidadPorEquipo[eq] || {}).disponibles || 0 }}</span>
+                            <span style="font-size:0.65rem;color:#94a3b8;">/ {{ (disponibilidadPorEquipo[eq] || {}).total || 0 }} total</span>
+                        </div>
+                        <div style="margin-top:4px;background:#e2e8f0;border-radius:20px;height:5px;overflow:hidden;">
+                            <div :style="{ width: ( ((disponibilidadPorEquipo[eq] || {}).disponibles || 0) / Math.max((disponibilidadPorEquipo[eq] || {}).total || 1, 1) * 100) + '%', background: '#22c55e', height: '100%', borderRadius: '20px' }"></div>
+                        </div>
+                        <div v-if="(disponibilidadPorEquipo[eq] || {}).ausentes > 0" style="font-size:0.6rem;color:#ef4444;margin-top:3px;">🚫 {{ disponibilidadPorEquipo[eq].ausentes }} ausente(s)</div>
+                    </div>
+                    <div v-if="disponibilidadPorEquipo['(Sin equipo)']"
+                        @click="auditoresModalFiltroEquipo = auditoresModalFiltroEquipo === '(Sin equipo)' ? '' : '(Sin equipo)'"
+                        :style="auditoresModalFiltroEquipo === '(Sin equipo)' ? 'border-color:#94a3b8;background:#f8faff;' : ''"
+                        style="background:white;border:1.5px solid #e2e8f0;border-radius:12px;padding:8px 14px;cursor:pointer;min-width:130px;opacity:0.75;transition:0.15s;">
+                        <div style="font-size:0.65rem;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:2px;">Sin equipo</div>
+                        <div style="font-size:1.3rem;font-weight:800;color:#64748b;">{{ (disponibilidadPorEquipo['(Sin equipo)'] || {}).disponibles || 0 }}</div>
+                    </div>
+                </div>
+                <div v-if="auditoresModalFiltroEquipo" style="margin-top:8px;font-size:0.7rem;color:#2563eb;font-weight:600;">
+                    <i class="fas fa-filter"></i> Filtrando: <strong>{{ auditoresModalFiltroEquipo }}</strong>
+                    <button @click="auditoresModalFiltroEquipo = ''" style="background:none;border:none;color:#dc2626;cursor:pointer;margin-left:8px;font-size:0.65rem;"><i class="fas fa-times"></i> Quitar filtro</button>
+                </div>
+            </div>
+
+            <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                <input type="text" class="search-auditor" v-model="auditoresModalBusqueda" placeholder="🔍 Buscar auditor..." style="flex:1;min-width:150px;">
+                <select v-if="equiposLista.length > 0" v-model="auditoresModalFiltroEquipo" style="border:1px solid #d1d9e6;border-radius:8px;padding:5px 10px;font-size:0.75rem;background:white;">
+                    <option value="">Todos los equipos</option>
+                    <option v-for="eq in equiposLista" :key="eq" :value="eq">{{ eq }}</option>
+                    <option value="(Sin equipo)">Sin equipo</option>
+                </select>
+            </div>
             <div style="margin-bottom:10px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
                 <span class="badge badge-primary">Total: {{ auditoresModalLista.length }}</span>
+                <span class="badge" style="background:#dcfce7;color:#166534;" v-if="equiposLista.length > 0">👥 Equipos: {{ equiposLista.length }}</span>
                 <span class="badge badge-warning" v-if="cantidadAusentes">🚫 Ausentes: {{ cantidadAusentes }}</span>
                 <label style="display:flex; align-items:center; gap:5px; font-size:0.75rem; font-weight:600; cursor:pointer; margin-left:auto;">
                     <input type="checkbox" :checked="todosAuditoresSeleccionados()" @change="toggleSeleccionTodosAuditores" style="width:14px; height:14px; accent-color:#2563eb; cursor:pointer;">
@@ -1064,19 +1105,30 @@
                 </button>
             </div>
             <div v-if="auditoresModalListaFiltrada.length === 0" style="text-align:center; padding:30px; color:#94a3b8;"><i class="fas fa-users" style="font-size:2rem; display:block; margin-bottom:10px;"></i> No hay auditores registrados</div>
-            <div v-else style="max-height:50vh; overflow-y:auto;">
+            <div v-else style="max-height:45vh; overflow-y:auto;">
                 <div class="auditor-item" v-for="auditor in auditoresModalListaFiltrada" :key="auditor" :style="esAusente(auditor) ? 'background:#fef2f2;' : ''">
                     <div style="display:flex; align-items:center; gap:8px; flex:1; min-width:0;">
                         <input type="checkbox" :checked="auditoresModalSeleccionados.includes(auditor)" @change="toggleSeleccionAuditor(auditor)" style="width:15px; height:15px; accent-color:#2563eb; cursor:pointer; flex-shrink:0;">
-                        <div class="nombre" :style="esAusente(auditor) ? 'color:#991b1b;' : ''">{{ auditor }}</div>
+                        <div style="flex:1;min-width:0;">
+                            <div class="nombre" :style="esAusente(auditor) ? 'color:#991b1b;' : ''">{{ auditor }}</div>
+                            <div v-if="getEquipoAuditor(auditor)" style="font-size:0.6rem;color:#2563eb;font-weight:600;margin-top:1px;">
+                                <i class="fas fa-layer-group" style="font-size:0.55rem;"></i> {{ getEquipoAuditor(auditor) }}
+                            </div>
+                        </div>
                     </div>
                     <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
-                        <span v-if="esAusente(auditor)" class="stats-badge" style="background:#fee2e2; color:#991b1b;" :title="'Motivo: ' + motivoAusencia(auditor) + (hastaAusencia(auditor) ? ' · Hasta el ' + formatearFechaViaje(hastaAusencia(auditor)) : '')">🚫 Ausente · {{ motivoAusencia(auditor) }}<template v-if="hastaAusencia(auditor)"> · hasta {{ formatearFechaViaje(hastaAusencia(auditor)) }}</template></span>
+                        <!-- Input de equipo inline -->
+                        <input type="text" :value="getEquipoAuditor(auditor)" @change="setEquipoAuditor(auditor, $event.target.value)" placeholder="Equipo..." style="border:1px solid #e2e8f0;border-radius:6px;padding:2px 7px;font-size:0.6rem;width:90px;outline:none;" title="Asignar equipo a este auditor" list="equipos-datalist">
+                        <span v-if="esAusente(auditor)" class="stats-badge" style="background:#fee2e2; color:#991b1b;" :title="'Motivo: ' + motivoAusencia(auditor) + (hastaAusencia(auditor) ? ' · Hasta el ' + formatearFechaViaje(hastaAusencia(auditor)) : '')">🚫 {{ motivoAusencia(auditor) }}<template v-if="hastaAusencia(auditor)"> · {{ formatearFechaViaje(hastaAusencia(auditor)) }}</template></span>
                         <button v-if="esAusente(auditor)" class="btn btn-outline btn-sm" style="padding:2px 8px; font-size:0.6rem;" @click="quitarAusencia(auditor)" title="Reincorporar auditor"><i class="fas fa-user-check"></i> Reincorporar</button>
                     </div>
                 </div>
             </div>
-            <p style="font-size:0.68rem; color:#94a3b8; margin-top:8px;"><i class="fas fa-info-circle"></i> La base de auditores es compartida entre Puntos de Ventas y Centro Logístico. Los auditores ausentes no aparecen como disponibles para asignar en ningún módulo.</p>
+            <!-- Datalist para autocompletar equipos -->
+            <datalist id="equipos-datalist">
+                <option v-for="eq in equiposLista" :key="eq" :value="eq"></option>
+            </datalist>
+            <p style="font-size:0.68rem; color:#94a3b8; margin-top:8px;"><i class="fas fa-info-circle"></i> La base de auditores es compartida entre Puntos de Ventas y Centro Logístico. Podés asignar el <strong>equipo</strong> directamente en cada fila. Los auditores ausentes no aparecen como disponibles para asignar.</p>
             <button class="btn btn-outline" style="margin-top:12px;" @click="mostrarAuditoresModal = false">Cerrar</button>
         </div>
     </div>
@@ -1636,6 +1688,25 @@
     </div>
     <!-- FIN MÓDULO HISTORIAL -->
 
+    <!-- Modal de Notificaciones y Bitácora -->
+    <!-- ===== MODAL: Fecha real del inventario ===== -->
+    <div class="modal-overlay" v-if="auditadoFechaMostrar" style="z-index:1100;">
+        <div class="modal-content" style="max-width:420px;">
+            <h2 style="font-size:1.1rem;margin-bottom:14px;"><i class="fas fa-calendar-check" style="color:#16a34a;"></i> ¿En qué fecha se realizó el inventario?</h2>
+            <p style="font-size:0.78rem;color:#64748b;margin-bottom:14px;">Esta fecha quedará registrada como el <strong>Último Inventario</strong> del PDV y los <strong>días</strong> se calcularán desde ella.</p>
+            <div style="margin-bottom:18px;">
+                <label style="font-weight:600;font-size:0.82rem;display:block;margin-bottom:6px;color:#1e293b;"><i class="fas fa-calendar"></i> Fecha del inventario</label>
+                <input type="date" v-model="auditadoFechaValor" class="search-auditor" style="width:100%;font-size:0.9rem;padding:8px 12px;" :max="hoyIso()">
+                <p style="font-size:0.65rem;color:#94a3b8;margin-top:4px;"><i class="fas fa-info-circle"></i> Por defecto aparece la fecha de hoy. Cambiala si estás cargando un inventario de días anteriores.</p>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <button class="btn btn-success" @click="confirmarAuditadoFecha" :disabled="!auditadoFechaValor"><i class="fas fa-check"></i> Confirmar</button>
+                <button class="btn btn-outline" @click="cancelarAuditadoFecha"><i class="fas fa-times"></i> Cancelar</button>
+            </div>
+        </div>
+    </div>
+    <!-- FIN MODAL Fecha Auditado -->
+
     <!-- Modals de Notificaciones y Bitácora -->
     <div class="modal-overlay" v-if="mostrarNotificacionesModal" @click.self="mostrarNotificacionesModal = false">
         <div class="modal-content">
@@ -1887,6 +1958,12 @@
                 eliminarMostrar: false, eliminarModulo: 'pf', eliminarPassword: '',
                 mostrarAuditoresModal: false, auditoresModalTitulo: '', auditoresModalLista: [], auditoresModalBusqueda: '',
                 mostrarAuditadosModal: false, auditadosModalModulo: 'pf', auditadosModalBusqueda: '', auditadosModalEstado: 'auditado',
+                // ====== MODAL FECHA AUDITADO ======
+                auditadoFechaMostrar: false, auditadoFechaValor: '', auditadoFechaFilaPendiente: null, auditadoFechaModulo: 'pf',
+                // ====== EQUIPOS DE AUDITORES ======
+                // { 'Nombre Auditor': 'Equipo A' }
+                auditoresEquipos: {},
+                auditoresModalFiltroEquipo: '',
                 // Estado de Google Drive
                 driveConectado: false, driveConectando: false, driveUsuario: '', driveSincronizando: false,
                 driveUltimaSync: '', driveError: '', driveFileId: null, driveModifiedTimeConocido: null, driveExcelFileId: null,
@@ -1907,7 +1984,34 @@
                 pfAuditores() { return this.auditores; },
                 clAuditores() { return this.auditores; },
                 cantidadAusentes() { return Object.keys(this.auditoresAusentes).length; },
-                auditoresModalListaFiltrada() { if (!this.auditoresModalBusqueda) return this.auditoresModalLista; const q = this.auditoresModalBusqueda.toLowerCase(); return this.auditoresModalLista.filter(a => obtenerNombreApellido(a).toLowerCase().includes(q)); },
+                auditoresModalListaFiltrada() {
+                    let lista = this.auditoresModalLista;
+                    if (this.auditoresModalFiltroEquipo) {
+                        lista = lista.filter(a => this.getEquipoAuditor(a) === this.auditoresModalFiltroEquipo);
+                    }
+                    if (!this.auditoresModalBusqueda) return lista;
+                    const q = this.auditoresModalBusqueda.toLowerCase();
+                    return lista.filter(a => obtenerNombreApellido(a).toLowerCase().includes(q));
+                },
+                // Todos los equipos únicos registrados
+                equiposLista() {
+                    const equipos = new Set();
+                    Object.values(this.auditoresEquipos).forEach(eq => { if (eq && eq.trim()) equipos.add(eq.trim()); });
+                    return [...equipos].sort((a, b) => a.localeCompare(b, 'es'));
+                },
+                // Disponibilidad por equipo: { 'Equipo A': { total, disponibles, ausentes } }
+                disponibilidadPorEquipo() {
+                    const res = {};
+                    this.auditores.forEach(a => {
+                        const eq = this.getEquipoAuditor(a) || '(Sin equipo)';
+                        if (!res[eq]) res[eq] = { total: 0, disponibles: 0, ausentes: 0, nombres: [], nombresDisponibles: [] };
+                        res[eq].total++;
+                        res[eq].nombres.push(a);
+                        if (this.esAusente(a)) { res[eq].ausentes++; }
+                        else { res[eq].disponibles++; res[eq].nombresDisponibles.push(a); }
+                    });
+                    return res;
+                },
                 listaAuditadosFiltrada() {
                     const fuente = this.auditadosModalModulo === 'pf' ? this.pfFilas : this.clFilas;
                     const auditados = fuente.filter(f => f.estado === this.auditadosModalEstado);
@@ -2088,6 +2192,7 @@
             watch: {
                 pfFilas: { handler() { this.guardarTodo(); }, deep: true }, clFilas: { handler() { this.guardarTodo(); }, deep: true },
                 auditores: { handler() { this.guardarTodo(); }, deep: true }, auditoresAusentes: { handler() { this.guardarTodo(); }, deep: true },
+                auditoresEquipos: { handler() { this.guardarTodo(); }, deep: true },
                 pfBloqueado() { this.guardarTodo(); }, clBloqueado() { this.guardarTodo(); }, bitacora: { handler() { this.guardarTodo(); }, deep: true }, historialNotificaciones: { handler() { this.guardarTodo(); }, deep: true },
                 viajesGuardados: { handler() { this.guardarTodo(); }, deep: true },
                 historialInventarios: { handler() { this.guardarTodo(); }, deep: true },
@@ -2178,6 +2283,7 @@
                             this.auditores = unicos;
                         }
                         if (data.auditoresAusentes && typeof data.auditoresAusentes === 'object' && !Array.isArray(data.auditoresAusentes)) this.auditoresAusentes = data.auditoresAusentes;
+                        if (data.auditoresEquipos && typeof data.auditoresEquipos === 'object' && !Array.isArray(data.auditoresEquipos)) this.auditoresEquipos = data.auditoresEquipos;
                         if (typeof data.pfBloqueado === 'boolean') this.pfBloqueado = data.pfBloqueado; if (typeof data.clBloqueado === 'boolean') this.clBloqueado = data.clBloqueado;
                         if (Array.isArray(data.bitacora)) this.bitacora = data.bitacora; if (Array.isArray(data.historialNotificaciones)) this.historialNotificaciones = data.historialNotificaciones;
                         if (data.ultimoMensajePF) this.ultimoMensajePF = data.ultimoMensajePF; if (data.ultimoMensajeCL) this.ultimoMensajeCL = data.ultimoMensajeCL;
@@ -2207,7 +2313,7 @@
                     this.$nextTick(() => { setTimeout(() => { this._supresionGuardadoDrive = false; }, 200); });
                 },
                 construirPayload() {
-                    return { version: 1, guardadoEn: new Date().toISOString(), pfFilas: this.pfFilas, clFilas: this.clFilas, auditores: this.auditores, auditoresAusentes: this.auditoresAusentes, pfBloqueado: this.pfBloqueado, clBloqueado: this.clBloqueado, bitacora: this.bitacora, historialNotificaciones: this.historialNotificaciones, ultimoMensajePF: this.ultimoMensajePF, ultimoMensajeCL: this.ultimoMensajeCL, viajesGuardados: this.viajesGuardados, historialInventarios: this.historialInventarios };
+                    return { version: 1, guardadoEn: new Date().toISOString(), pfFilas: this.pfFilas, clFilas: this.clFilas, auditores: this.auditores, auditoresAusentes: this.auditoresAusentes, auditoresEquipos: this.auditoresEquipos, pfBloqueado: this.pfBloqueado, clBloqueado: this.clBloqueado, bitacora: this.bitacora, historialNotificaciones: this.historialNotificaciones, ultimoMensajePF: this.ultimoMensajePF, ultimoMensajeCL: this.ultimoMensajeCL, viajesGuardados: this.viajesGuardados, historialInventarios: this.historialInventarios };
                 },
                 guardarEnAlmacenamiento() {
                     this.guardando = true;
@@ -2499,8 +2605,8 @@
                     const wsRe = XLSX.utils.aoa_to_sheet(filasRe);
                     XLSX.utils.book_append_sheet(wb, wsRe, 'Reauditorías');
                     // Hoja con la base compartida de auditores y sus ausencias.
-                    const headersAud = ['Auditor', 'Estado', 'Motivo Ausencia', 'Ausente / Reposo hasta'];
-                    const filasAud = [headersAud, ...[...this.auditores].sort((a, b) => obtenerNombreApellido(a).localeCompare(obtenerNombreApellido(b), 'es')).map(a => [a, this.esAusente(a) ? 'Ausente' : 'Activo', this.motivoAusencia(a) || '', this.hastaAusencia(a) ? this.formatearFechaViaje(this.hastaAusencia(a)) : ''])];
+                    const headersAud = ['Auditor', 'Equipo', 'Estado', 'Motivo Ausencia', 'Ausente / Reposo hasta'];
+                    const filasAud = [headersAud, ...[...this.auditores].sort((a, b) => obtenerNombreApellido(a).localeCompare(obtenerNombreApellido(b), 'es')).map(a => [a, this.getEquipoAuditor(a) || '', this.esAusente(a) ? 'Ausente' : 'Activo', this.motivoAusencia(a) || '', this.hastaAusencia(a) ? this.formatearFechaViaje(this.hastaAusencia(a)) : ''])];
                     const wsAud = XLSX.utils.aoa_to_sheet(filasAud);
                     XLSX.utils.book_append_sheet(wb, wsAud, 'Auditores');
                     // Hoja de viajes agendados: un renglón por viaje con todos sus datos.
@@ -2709,18 +2815,23 @@
                 pfCambiarEstado(index) {
                     if (this.noDrive()) return;
                     const fila = this.pfFilasFiltradas[index]; if (!fila) return;
-                    if (fila.estado === 'pendiente' || fila.estado === 'agendado') fila.motivoReauditoria = null;
-                    // ⭐ Congelar fecha y días al marcar como Auditado
+                    if (fila.estado === 'pendiente' || fila.estado === 'agendado') {
+                        fila.motivoReauditoria = null;
+                        // Si estaba auditado/reauditado antes, limpiar congelado
+                        if (fila.fechaRealInventario) { fila.fechaRealInventario = ''; fila.diasCongelados = undefined; fila.colorClaseCongelada = ''; }
+                    }
+                    // ⭐ Al marcar Auditado/Reauditado → abrir modal para elegir fecha
                     if (fila.estado === 'auditado' || fila.estado === 'reauditado') {
                         if (!fila.fechaRealInventario) {
-                            fila.fechaRealInventario = this.hoyIso();
-                            fila.diasCongelados = fila.dias !== null ? fila.dias : 0;
-                            fila.colorClaseCongelada = fila.colorClase || '';
-                            // Guardar snapshot en historial
-                            this.agregarSnapshotHistorial([fila], 'PF');
+                            this.auditadoFechaFilaPendiente = fila;
+                            this.auditadoFechaModulo = 'pf';
+                            this.auditadoFechaValor = this.hoyIso();
+                            this.auditadoFechaMostrar = true;
+                            return; // espera confirmación del modal
                         }
                     }
-                    this.registrarBitacora('PF', 'Cambio manual de estado', `PDV ${fila.NRO_SUCURSAL || 'S/N'} cambiado a: ${this.estadoTexto(fila.estado)}.`); this.notificar(`Estado actualizado.`, 'info');
+                    this.registrarBitacora('PF', 'Cambio manual de estado', `PDV ${fila.NRO_SUCURSAL || 'S/N'} cambiado a: ${this.estadoTexto(fila.estado)}.`);
+                    this.notificar(`Estado actualizado.`, 'info');
                 },
                 pfImportarAuditores(event) {
                     const file = event.target.files[0]; if (!file) return; const reader = new FileReader();
@@ -2731,7 +2842,13 @@
                             const clavesExistentes = new Set(this.pfAuditores.map(normalizarClave)); let importados = 0; let duplicados = 0;
                             jsonData.forEach(row => {
                                 const nombre = String(row['Nombre y Apellido'] || row['NOMBRE Y APELLIDO'] || row['Nombre'] || '').trim();
-                                if (nombre) { const clave = normalizarClave(nombre); if (!clavesExistentes.has(clave)) { this.pfAuditores.push(nombre); clavesExistentes.add(clave); importados++; } else duplicados++; }
+                                if (nombre) {
+                                    const clave = normalizarClave(nombre);
+                                    if (!clavesExistentes.has(clave)) { this.auditores.push(nombre); clavesExistentes.add(clave); importados++; } else duplicados++;
+                                    // ⭐ Importar equipo si viene en la columna
+                                    const equipo = String(row['EQUIPO'] || row['Equipo'] || row['equipo'] || '').trim();
+                                    if (equipo) this.$set(this.auditoresEquipos, clave, equipo);
+                                }
                             });
                             this.notificar(`${importados} importados` + (duplicados ? `, ${duplicados} ya existían.` : '.'), 'success');
                         } catch (error) { this.notificar('Error al leer Excel.', 'error'); }
@@ -2838,14 +2955,18 @@
                 clCambiarEstado(index) {
                     if (this.noDrive()) return;
                     const fila = this.clFilasFiltradas[index]; if (!fila) return;
-                    if (fila.estado === 'pendiente' || fila.estado === 'agendado') fila.motivoReauditoria = null;
-                    // ⭐ Congelar fecha y días al marcar como Auditado
+                    if (fila.estado === 'pendiente' || fila.estado === 'agendado') {
+                        fila.motivoReauditoria = null;
+                        if (fila.fechaRealInventario) { fila.fechaRealInventario = ''; fila.diasCongelados = undefined; fila.colorClaseCongelada = ''; }
+                    }
+                    // ⭐ Al marcar Auditado/Reauditado → abrir modal para elegir fecha
                     if (fila.estado === 'auditado' || fila.estado === 'reauditado') {
                         if (!fila.fechaRealInventario) {
-                            fila.fechaRealInventario = this.hoyIso();
-                            fila.diasCongelados = fila.dias !== null ? fila.dias : 0;
-                            fila.colorClaseCongelada = fila.colorClase || '';
-                            this.agregarSnapshotHistorial([fila], 'CL');
+                            this.auditadoFechaFilaPendiente = fila;
+                            this.auditadoFechaModulo = 'cl';
+                            this.auditadoFechaValor = this.hoyIso();
+                            this.auditadoFechaMostrar = true;
+                            return;
                         }
                     }
                 },
@@ -2857,7 +2978,12 @@
                             const clavesExistentes = new Set(this.clAuditores.map(normalizarClave));
                             jsonData.forEach(row => {
                                 const nombre = String(row['Nombre y Apellido'] || row['NOMBRE'] || '').trim();
-                                if (nombre) { const clave = normalizarClave(nombre); if (!clavesExistentes.has(clave)) { this.clAuditores.push(nombre); clavesExistentes.add(clave); } }
+                                if (nombre) {
+                                    const clave = normalizarClave(nombre);
+                                    if (!clavesExistentes.has(clave)) { this.auditores.push(nombre); clavesExistentes.add(clave); }
+                                    const equipo = String(row['EQUIPO'] || row['Equipo'] || row['equipo'] || '').trim();
+                                    if (equipo) this.$set(this.auditoresEquipos, clave, equipo);
+                                }
                             });
                         } catch (error) {}
                     };
@@ -3014,29 +3140,87 @@
                 },
                 generadoMarcarAuditado() {
                     if (this.noDrive()) return;
-                    const data = [...this.pfFilas, ...this.clFilas];
-                    const auditadosAhora = [];
-                    this.generadoPuntos.forEach(f => {
-                        const fila = data.find(ff => ff._uid === f._uid);
-                        if (fila && fila.estado !== 'auditado') {
-                            fila.estado = 'auditado';
-                            // ⭐ Congelar fecha y días
-                            if (!fila.fechaRealInventario) {
-                                fila.fechaRealInventario = this.hoyIso();
-                                fila.diasCongelados = fila.dias !== null ? fila.dias : 0;
-                                fila.colorClaseCongelada = fila.colorClase || '';
+                    // ⭐ Abrir modal de fecha para el grupo completo
+                    this.auditadoFechaFilaPendiente = '__generado__'; // bandera especial
+                    this.auditadoFechaModulo = 'generado';
+                    this.auditadoFechaValor = this.hoyIso();
+                    this.auditadoFechaMostrar = true;
+                },
+                confirmarAuditadoFecha() {
+                    if (!this.auditadoFechaValor) { this.notificar('Seleccioná una fecha.', 'warning'); return; }
+                    const fechaElegida = this.auditadoFechaValor;
+                    if (this.auditadoFechaFilaPendiente === '__generado__') {
+                        // Flujo del botón "Marcar como Auditado" del modal de cronograma
+                        const data = [...this.pfFilas, ...this.clFilas];
+                        const auditadosAhora = [];
+                        this.generadoPuntos.forEach(f => {
+                            const fila = data.find(ff => ff._uid === f._uid);
+                            if (fila && fila.estado !== 'auditado') {
+                                fila.estado = 'auditado';
+                                if (!fila.fechaRealInventario) {
+                                    fila.fechaRealInventario = fechaElegida;
+                                    // Calcular días desde el ÚLTIMO INVENTARIO original hasta la fecha elegida
+                                    const diasCalculados = fila.Ultimo_Inventario ? Math.floor((new Date(fechaElegida) - new Date(fila.Ultimo_Inventario)) / 86400000) : (fila.dias !== null ? fila.dias : 0);
+                                    fila.diasCongelados = diasCalculados >= 0 ? diasCalculados : 0;
+                                    fila.colorClaseCongelada = getColorClase(fila.diasCongelados);
+                                    // Actualizar Ultimo_Inventario con la fecha real del inventario
+                                    fila.Ultimo_Inventario = fechaElegida;
+                                }
+                                auditadosAhora.push(fila);
                             }
-                            auditadosAhora.push(fila);
+                        });
+                        if (auditadosAhora.length > 0) {
+                            const esPF = this.generadoModulo.includes('Ventas') || this.generadoModulo.includes('PDV');
+                            const esCL = this.generadoModulo.includes('Logístico');
+                            const modulo = esPF && esCL ? 'PF + CL' : (esPF ? 'PF' : 'CL');
+                            this.agregarSnapshotHistorial(auditadosAhora, modulo);
                         }
-                    });
-                    // Guardar snapshot en historial
-                    if (auditadosAhora.length > 0) {
-                        const esPF = this.generadoModulo.includes('Ventas') || this.generadoModulo.includes('PDV');
-                        const esCL = this.generadoModulo.includes('Logístico');
-                        const modulo = esPF && esCL ? 'PF + CL' : (esPF ? 'PF' : 'CL');
-                        this.agregarSnapshotHistorial(auditadosAhora, modulo);
+                        this.generadoMostrar = false;
+                    } else {
+                        // Flujo individual (pfCambiarEstado / clCambiarEstado)
+                        const fila = this.auditadoFechaFilaPendiente;
+                        if (fila) {
+                            fila.fechaRealInventario = fechaElegida;
+                            const diasCalculados = fila.Ultimo_Inventario ? Math.floor((new Date(fechaElegida) - new Date(fila.Ultimo_Inventario)) / 86400000) : (fila.dias !== null ? fila.dias : 0);
+                            fila.diasCongelados = diasCalculados >= 0 ? diasCalculados : 0;
+                            fila.colorClaseCongelada = getColorClase(fila.diasCongelados);
+                            // Actualizar Ultimo_Inventario con la fecha real del inventario
+                            fila.Ultimo_Inventario = fechaElegida;
+                            fila.dias = calcularDiasDesde(fechaElegida);
+                            fila.colorClase = getColorClase(fila.dias);
+                            const modulo = this.auditadoFechaModulo === 'pf' ? 'PF' : 'CL';
+                            this.agregarSnapshotHistorial([fila], modulo);
+                            const id = fila.NRO_SUCURSAL || fila.DEPOSITO || 'S/N';
+                            this.registrarBitacora(modulo, 'Cambio manual de estado', `${modulo === 'PF' ? 'PDV' : 'Depósito'} ${id} auditado. Fecha inventario: ${fechaElegida}. Días: ${fila.diasCongelados}.`);
+                            this.notificar(`✅ Auditado el ${fechaElegida}. Último inventario actualizado.`, 'success');
+                        }
                     }
-                    this.generadoMostrar = false;
+                    this.auditadoFechaMostrar = false;
+                    this.auditadoFechaFilaPendiente = null;
+                    this.auditadoFechaValor = '';
+                },
+                cancelarAuditadoFecha() {
+                    // El usuario cancela: revertir el estado al anterior
+                    const fila = this.auditadoFechaFilaPendiente;
+                    if (fila && fila !== '__generado__') {
+                        fila.estado = 'generado'; // volver a generado (era el estado antes de cambiar)
+                    }
+                    this.auditadoFechaMostrar = false;
+                    this.auditadoFechaFilaPendiente = null;
+                    this.auditadoFechaValor = '';
+                },
+                // ======== EQUIPOS DE AUDITORES ========
+                getEquipoAuditor(nombre) {
+                    return this.auditoresEquipos[normalizarClave(nombre)] || '';
+                },
+                setEquipoAuditor(nombre, equipo) {
+                    if (!nombre) return;
+                    const clave = normalizarClave(nombre);
+                    if (equipo && equipo.trim()) {
+                        this.$set(this.auditoresEquipos, clave, equipo.trim());
+                    } else {
+                        this.$delete(this.auditoresEquipos, clave);
+                    }
                 },
                 cantAuditoresNetos(fila) {
                     const personas = fila.personasSeleccionadas || [];
